@@ -55,7 +55,6 @@ COPY . .
 # Next.js standalone folder includes its own node_modules
 COPY --from=frontend-builder /app/web/.next/standalone /app/webapp/web/standalone
 COPY --from=frontend-builder /app/web/.next/static /app/webapp/web/standalone/webapp/web/.next/static
-COPY --from=frontend-builder /app/web/public /app/webapp/web/standalone/webapp/web/public
 
 # Writable dirs
 RUN mkdir -p memory .tmp/evidence webapp/data/screenshots
