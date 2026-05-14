@@ -54,6 +54,7 @@ COPY . .
 # Copy built frontend from Stage 1
 # Next.js standalone folder includes its own node_modules
 COPY --from=frontend-builder /app/web/.next/standalone /app/webapp/web/standalone
+COPY --from=frontend-builder /app/web/.next/static /app/webapp/web/standalone/.next/static
 COPY --from=frontend-builder /app/web/.next/static /app/webapp/web/standalone/webapp/web/.next/static
 
 # Writable dirs
