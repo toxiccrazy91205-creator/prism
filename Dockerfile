@@ -1,5 +1,7 @@
 # STAGE 1: Build Frontend
 FROM node:20-slim as frontend-builder
+ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_OPTIONS=--max-old-space-size=4096
 WORKDIR /app/web
 COPY webapp/web/package*.json ./
 RUN npm install
