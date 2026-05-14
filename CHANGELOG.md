@@ -12,7 +12,7 @@ Two user complaints, addressed in one ship through the full SDLC stack:
 
 ### Added — per-file upload progress
 - **`POST /api/knowledge/projects/{id}/classify-one-report`** — single-PDF endpoint used by frontend's per-file iteration loop. Same extract+classify+save pipeline as `bulk-upload-reports`, no synthesis triggered (synthesis batches once at the end via Industry Pulse refresh).
-- **Frontend per-file iteration**: drop a folder → frontend iterates each PDF sequentially → user sees live progress (`12 of 30 · openai-10K-2024.pdf · Last matched: Anthropic ✓`) with a Cancel button. After all done, single Industry Pulse refresh triggers synthesis.
+- **Frontend per-file iteration**: drop a folder → frontend iterates each PDF sequentially → user sees live progress (`12 of 30 · openai-10K-2024.pdf · Last matched: NVIDIA ✓`) with a Cancel button. After all done, single Industry Pulse refresh triggers synthesis.
 - 5 integration tests pinning the contract (`tests/test_classify_one_endpoint.py`).
 
 ### Added — content quality system
@@ -201,7 +201,7 @@ User report: *"every competitor profile identifies now is at 30% completion, not
 The "30% confidence" badge wasn't a confidence score — it was an observation-count band (`webapp/api/routes/knowledge.py:67`) capped at 90%. Every LLM-discovered competitor lands in the 1–2 findings band → 30%, with no path to 100% even on perfect data.
 
 ### Added
-- **`agent/llm_deep_profile.py`** — generates 8–10 project-specific *probing prompts* per competitor across 11 fact-categories (recent_moves, pricing, feature, metric, regulatory, leadership, technical_moat, weakness, ma_activity, growth_signal, controversy), then runs each prompt as a separate LLM call to extract structured `Fact` rows. Drops low-confidence facts. Parallel by default (4 workers). Groq primary, Claude fallback. ~11 calls per competitor — free on Groq quota.
+- **`agent/llm_deep_profile.py`** — generates 8–10 project-specific *probing prompts* per competitor across 11 fact-categories (recent_moves, pricing, feature, metric, regulatory, leadership, technical_moat, weakness, ma_activity, growth_signal, controversy), then runs each prompt as a separate LLM call to extract structured `Fact` rows. Drops low-confidence facts. Parallel by default (4 workers). NVIDIA primary, NVIDIA fallback. ~11 calls per competitor — free on NVIDIA quota.
 - **`competitor_deep_profile` work-item category** routed in `agent/competitive_intel_agent.py:execute_work_item` → `_llm_deep_profile()`. Each fact becomes a tagged observation (correct `observation_type` + `lens_tags`), pushing the competitor into the 5+ findings band.
 - **`POST /api/knowledge/competitors/{entity_id}/deepen`** — frontend-callable endpoint that enqueues a single deep-profile work item. Idempotent (skips if already pending). Wired into `webapp/web/lib/api.ts:deepenCompetitor`.
 - **"Deepen profile" button** on competitor cards (list view) and on the detail page header. One click → queued; the intel agent picks up on next loop.
@@ -213,7 +213,7 @@ The "30% confidence" badge wasn't a confidence score — it was an observation-c
 - **UI relabel**: `30% confidence` → `30% · 1 finding · Shallow profile` with a tooltip explaining the bands. Same change on both list and detail pages.
 
 ### Why this matters
-The user couldn't see *what to do* to deepen a profile — the badge said "30% confidence" but no UI affordance pointed at the path forward. Now the badge tells them what they have ("1 finding · Shallow") and a Sparkle button next to it spawns 8–10 LLM probing calls across recent moves, pricing, moat, weaknesses, regulatory, leadership — exactly the categories a PM cares about. Free on Groq quota. No search-provider dependency.
+The user couldn't see *what to do* to deepen a profile — the badge said "30% confidence" but no UI affordance pointed at the path forward. Now the badge tells them what they have ("1 finding · Shallow") and a Sparkle button next to it spawns 8–10 LLM probing calls across recent moves, pricing, moat, weaknesses, regulatory, leadership — exactly the categories a PM cares about. Free on NVIDIA quota. No search-provider dependency.
 
 ## [0.20.1] — 2026-04-29 — Impact tab: full effect text + evidence links
 
@@ -259,12 +259,12 @@ Existing projects (Sarvam, MakeMyTrip, Platinum) had already completed their `in
 
 ## [0.19.0] — 2026-04-29 — LLM-as-search for competitor discovery
 
-User insight: *"if I ask Claude or GPT 'who are the competitors of company XYZ' they answer from training data — why does Prism need a Tavily call?"*
+User insight: *"if I ask NVIDIA or GPT 'who are the competitors of company XYZ' they answer from training data — why does Prism need a Tavily call?"*
 
-Right. For named-entity discovery, modern LLMs (Llama 3.3 70B on Groq, Claude, GPT) already encode the answer with better fidelity than search-grounded synthesis — search drift (e.g. "Platinum Industries" → platinum-metal pollution) doesn't happen, and there's no quota wall. Live UAT against Sarvam.ai now produces:
+Right. For named-entity discovery, modern LLMs (Llama 3.3 70B on NVIDIA, NVIDIA, GPT) already encode the answer with better fidelity than search-grounded synthesis — search drift (e.g. "Platinum Industries" → platinum-metal pollution) doesn't happen, and there's no quota wall. Live UAT against Sarvam.ai now produces:
 
 ```
-direct_global: OpenAI, Anthropic, Google, Cohere, Mistral AI    ← finally
+direct_global: OpenAI, NVIDIA, Google, Cohere, Mistral AI    ← finally
 direct_local:  Indian AI startups
 indirect:      Hugging Face, AWS SageMaker, Google Cloud AI
 ```
@@ -272,7 +272,7 @@ indirect:      Hugging Face, AWS SageMaker, Google Cloud AI
 The architectural change is bounded — search infrastructure stays intact for `competitor_profile`, `regulatory_scan`, dated/quantified queries where it actually adds value. Discovery just bypasses it.
 
 ### Added
-- `agent/llm_search.py` — `llm_competitor_discovery(project_name, project_description, portfolio_summary?) → CompetitorDiscovery`. One Groq call (Claude fallback) returns `direct_local + direct_global + indirect` competitor lists with one-line differentiators and (optionally) homepage URLs. Each emitted URL gets a single HEAD request (5s timeout, 8-way parallel pool) — verified URLs become first-class source citations; unverified URLs are kept with the entity but the observation content notes "training-data citation, URL unverified" so the report's hallucination guard sees the provenance.
+- `agent/llm_search.py` — `llm_competitor_discovery(project_name, project_description, portfolio_summary?) → CompetitorDiscovery`. One NVIDIA call (NVIDIA fallback) returns `direct_local + direct_global + indirect` competitor lists with one-line differentiators and (optionally) homepage URLs. Each emitted URL gets a single HEAD request (5s timeout, 8-way parallel pool) — verified URLs become first-class source citations; unverified URLs are kept with the entity but the observation content notes "training-data citation, URL unverified" so the report's hallucination guard sees the provenance.
 - `agent/competitive_intel_agent._llm_discover_competitors` — new path for `industry_identification` and `contrarian_discovery` work items. Pulls portfolio_summary from the brief (v0.16.2 grounding), runs LLM discovery, validates each name through `extraction_guard.validate_extraction` (which catches placeholders, self-references, trivial names per v0.16.0 + v0.18.3), upserts `company` entities + `competes_with` relations + initial observations.
 - `tests/test_llm_search.py` — 10 unit tests pinning JSON parsing (strict / fenced / prose-wrapped / garbage), URL verifier behavior, and LLM-discovery happy path + degradation paths (empty response, non-list categories, unnamed entries).
 
@@ -281,7 +281,7 @@ The architectural change is bounded — search infrastructure stays intact for `
 
 ### Tradeoff register
 - **Gained:** competitor discovery now works overnight even with all four search providers exhausted ($0 cost, 100% availability against any free LLM tier). Global category leaders + indirect substitutes appear automatically — the user's two outstanding complaints from yesterday's UAT both addressed by the same architectural cut.
-- **Lost:** discovery is bounded to the LLM's training cutoff (≈Jan 2026 for current Llama 3.3 / Claude). Companies founded in the last few months may be missed. Source URLs are LLM-emitted (verified-or-labeled) rather than pulled from live search results.
+- **Lost:** discovery is bounded to the LLM's training cutoff (≈Jan 2026 for current Llama 3.3 / NVIDIA). Companies founded in the last few months may be missed. Source URLs are LLM-emitted (verified-or-labeled) rather than pulled from live search results.
 - **Net:** worth it. The "0 findings overnight" failure mode is the worse outcome by an order of magnitude. Time-sensitive queries already route through search-grounded paths (`regulatory_scan`, `competitor_profile`) and stay there.
 
 ### Why this lever didn't exist before
@@ -325,22 +325,22 @@ After v0.18.3 added the placeholder-name guard and we retro-purged 4 bad entitie
 
 ## [0.18.3] — 2026-04-28 — Reject "Competitor N" placeholders + request global category leaders + indirect competitors
 
-User report after the first successful report run: *"on Platinum I see competitors literally named 'Competitor 1' and 'Competitor 2'; on Sarvam only Indian companies are listed — why aren't OpenAI / Anthropic / Google Gemini there as competitors? I still don't see indirect competitors."* Two real bugs:
+User report after the first successful report run: *"on Platinum I see competitors literally named 'Competitor 1' and 'Competitor 2'; on Sarvam only Indian companies are listed — why aren't OpenAI / NVIDIA / Google NVIDIA there as competitors? I still don't see indirect competitors."* Two real bugs:
 
 1. The `competitive_intel` synthesizer, when search returned recognizable findings but no nameable companies, fell back to numbered placeholders ("Competitor 1 from the 4 findings"). The save_competitor tool persisted them as-is.
-2. The `industry_identification` prompt's queries were too parochial — `"{project_name} competitors"` returns local players. For Indian projects (Sarvam, Krutrim) this excludes the global category leaders (OpenAI, Anthropic, Gemini) that customers actually compare against.
+2. The `industry_identification` prompt's queries were too parochial — `"{project_name} competitors"` returns local players. For Indian projects (Sarvam, Krutrim) this excludes the global category leaders (OpenAI, NVIDIA, NVIDIA) that customers actually compare against.
 
 ### Fixed
 - `agent/extraction_guard.py` — added `_PLACEHOLDER_PATTERNS` (regex set) catching: `Competitor N`, `Company A`, `Player X`, `Example 1`, `from the N findings`, `TBD/TODO/XXX/N/A`, etc. The guard now rejects these patterns BEFORE persistence with reason `"placeholder/templated name"`. 16 new test cases pin both rejection (16 placeholder forms) and false-positive avoidance (real names with digits like "Sarvam.ai", "PVC Industries 2026 Annual Report" pass through).
 - `agent/competitive_intel_agent._tool_save_competitor` — guard runs at the tool boundary, not just at upsert. The LLM cannot end-run validation by emitting placeholder names.
-- `agent/competitive_intel_agent._build_work_prompt::industry_identification` — prompt rewritten to require: (a) local/direct queries, (b) alternatives queries, (c) **explicit category-leader queries with concrete examples** ("for an Indian LLM platform that's OpenAI, Anthropic, Gemini, Mistral, Cohere"), (d) **indirect/substitute queries** ("for an OTA: airline direct booking, Google Flights"). The prompt also explicitly forbids placeholder names with the rule: *"if you can't find a real name, save FEWER entities — quality over quantity."*
+- `agent/competitive_intel_agent._build_work_prompt::industry_identification` — prompt rewritten to require: (a) local/direct queries, (b) alternatives queries, (c) **explicit category-leader queries with concrete examples** ("for an Indian LLM platform that's OpenAI, NVIDIA, NVIDIA, Mistral, Cohere"), (d) **indirect/substitute queries** ("for an OTA: airline direct booking, Google Flights"). The prompt also explicitly forbids placeholder names with the rule: *"if you can't find a real name, save FEWER entities — quality over quantity."*
 
 ### Why this matters
 Two regressions surfaced by the same bug class — synthesizer fallback to scaffolding text. v0.16.0's guard caught self-references and trivial generics but missed numbered placeholders because they're surface-distinct ("Competitor 1" doesn't match "Industry"/"Market"). Adding regex coverage is a one-time gate that will catch this class for every future synthesizer drift. Plus the prompt change addresses the deeper product issue: customers don't compare only locally, and reports should reflect the full competitive set.
 
 ## [0.18.2] — 2026-04-27 — Fix KnowledgeStore positional-arg mismatch in report persistence
 
-v0.18.1's first end-to-end run on Groq actually completed all six synthesis calls in ~12s — finally proving the architecture works under the new provider mix — but failed at the very last step (`Rendering Excel…`) with `KnowledgeStore.__init__() missing 1 required positional argument: 'project_id'`. The orchestrator was passing `(db, project_id)` while `KnowledgeStore` takes `(db, agent_type, project_id)`. Fixed.
+v0.18.1's first end-to-end run on NVIDIA actually completed all six synthesis calls in ~12s — finally proving the architecture works under the new provider mix — but failed at the very last step (`Rendering Excel…`) with `KnowledgeStore.__init__() missing 1 required positional argument: 'project_id'`. The orchestrator was passing `(db, project_id)` while `KnowledgeStore` takes `(db, agent_type, project_id)`. Fixed.
 
 ### Fixed
 - `agent/report_generator._persist_manifest` — pass `agent_type='report_generator'` as the second positional arg (was incorrectly passing `project_id` as the second arg, satisfying neither parameter correctly).
@@ -348,21 +348,21 @@ v0.18.1's first end-to-end run on Groq actually completed all six synthesis call
 ### Why this didn't fail in unit tests
 `test_report_generator.py` mocks the synthesis path and tests primitives in isolation — the orchestrator + persistence path runs only on the live Railway instance. The bug surfaced exactly the moment everything else worked — the first complete pipeline run.
 
-## [0.18.1] — 2026-04-27 — Report synthesis on Groq instead of Anthropic
+## [0.18.1] — 2026-04-27 — Report synthesis on NVIDIA instead of NVIDIA
 
-After v0.18.0 cut report-call volume by ~5×, the Anthropic credit balance still ran dry within a day of heavy testing because *bursty* traffic (a report = ~10 LLM calls in <2 min) hits Anthropic faster than steady-state daemon usage. Switched the report synthesizer's primary provider to Groq (Llama 3.3 70B). Free tier 30 RPM / 14,400 RPD is plenty for routine report generation. Claude is now the fallback for the rare case Groq is hard-down.
+After v0.18.0 cut report-call volume by ~5×, the NVIDIA credit balance still ran dry within a day of heavy testing because *bursty* traffic (a report = ~10 LLM calls in <2 min) hits NVIDIA faster than steady-state daemon usage. Switched the report synthesizer's primary provider to NVIDIA (Llama 3.3 70B). Free tier 30 RPM / 14,400 RPD is plenty for routine report generation. NVIDIA is now the fallback for the rare case NVIDIA is hard-down.
 
 ### Changed
-- `agent/report_synthesis._ask` — primary provider now `groq_client.synthesize`. Calls fall back to `claude_client.ask` only when Groq is unavailable or errors. Anti-hallucination guard (`_gate_urls`) is provider-agnostic and applies to Groq output identically.
+- `agent/report_synthesis._ask` — primary provider now `nvidia_client.synthesize`. Calls fall back to `nvidia_client.ask` only when NVIDIA is unavailable or errors. Anti-hallucination guard (`_gate_urls`) is provider-agnostic and applies to NVIDIA output identically.
 
 ### Tradeoff
-- **Gained:** routine report generation costs $0; no Anthropic credit burn on the bursty workload that was the root cause of the 2026-04-27 exhaustion. Groq's 30 RPM matches our throttle from v0.15.5 → no cascade collapse on bursts.
-- **Lost:** Llama 3.3 70B is a step below Claude Sonnet 4.6 on dense analytical writing. For the structured prompts in this pipeline (executive summary, lens insights, recommendations) the gap is small; for free-form long-form synthesis it would be more visible.
+- **Gained:** routine report generation costs $0; no NVIDIA credit burn on the bursty workload that was the root cause of the 2026-04-27 exhaustion. NVIDIA's 30 RPM matches our throttle from v0.15.5 → no cascade collapse on bursts.
+- **Lost:** Llama 3.3 70B is a step below NVIDIA Sonnet 4.6 on dense analytical writing. For the structured prompts in this pipeline (executive summary, lens insights, recommendations) the gap is small; for free-form long-form synthesis it would be more visible.
 - **Net:** correct trade for the cost profile. Quality difference is offset by the website grounding (v0.16.2) and tier verification (v0.18.0) doing more of the heavy lifting upstream — the LLM is mostly composing well-structured paragraphs, not making complex reasoning leaps.
 
 ## [0.18.0] — 2026-04-27 — Tier verification by claim type (stop forcing URLs on every fact)
 
-User correction: *"if I ask Claude or GPT 'who are the competitors of company XYZ' they answer from training data — why does Prism need a Tavily call for that?"* Right. v0.17.x's URL gate over-applied the "zero hallucination" rule by demanding every claim cite a search-pulled URL. The result: even well-known facts (Yatra is an OTA, MakeMyTrip's main competitors are Cleartrip + ixigo + EaseMyTrip) burned a search call → which contributed to the multi-provider quota exhaustion on 2026-04-26/27.
+User correction: *"if I ask NVIDIA or GPT 'who are the competitors of company XYZ' they answer from training data — why does Prism need a Tavily call for that?"* Right. v0.17.x's URL gate over-applied the "zero hallucination" rule by demanding every claim cite a search-pulled URL. The result: even well-known facts (Yatra is an OTA, MakeMyTrip's main competitors are Cleartrip + ixigo + EaseMyTrip) burned a search call → which contributed to the multi-provider quota exhaustion on 2026-04-26/27.
 
 The fix splits sections into two verification tiers:
 
@@ -382,16 +382,16 @@ The fix splits sections into two verification tiers:
 ### Why this isn't a quality regression
 The hallucination guard is unchanged — `_gate_urls` still flags URLs not in scope. The relaxation is *what we expect of the LLM* (cite when relevant, not always), not *what we accept as output*. Specific numbers, dates, regulations, and competitor-by-competitor tactics still must come from the KG; only generic framing and well-known industry facts get the relaxed path. Net cost: ~5× fewer LLM/search calls per report on common-domain projects.
 
-## [0.17.3] — 2026-04-27 — Stop misclassifying every Anthropic 400 as a credit problem
+## [0.17.3] — 2026-04-27 — Stop misclassifying every NVIDIA 400 as a credit problem
 
-Reports were stuck at "Synthesizing executive summary…" for 5+ minutes per call. Diagnosis: `claude_client.ask()` and `ask_with_tools()` had a too-loose check — every 400 from Anthropic fell through to the Gemini fallback chain on the assumption it was a credit/billing issue. In reality, the 400s were "prompt too long" / "invalid model" / "messages malformed" (root cause TBD; the previous code never logged the body so we couldn't see). The Gemini cascade then 429'd through 30+60+120s retries → Groq 429'd → ~5 min wasted per call before raising.
+Reports were stuck at "Synthesizing executive summary…" for 5+ minutes per call. Diagnosis: `nvidia_client.ask()` and `ask_with_tools()` had a too-loose check — every 400 from NVIDIA fell through to the NVIDIA fallback chain on the assumption it was a credit/billing issue. In reality, the 400s were "prompt too long" / "invalid model" / "messages malformed" (root cause TBD; the previous code never logged the body so we couldn't see). The NVIDIA cascade then 429'd through 30+60+120s retries → NVIDIA 429'd → ~5 min wasted per call before raising.
 
 ### Fixed
-- `utils/claude_client.py` — extracted `_is_credit_or_billing()` with a tight whitelist of Anthropic's canonical credit/billing strings (`credit balance`, `usage limits`, `monthly usage limit`, `billing`, `payment required`). Only those trigger Gemini fallback. Everything else surfaces immediately so the user can fix the actual underlying cause.
-- `utils/claude_client::ask` and `ask_with_tools` — log the full Anthropic error body (first 400 chars) at WARNING level so future 400s diagnose themselves on first occurrence instead of staying invisible behind the cascade.
+- `utils/nvidia_client.py` — extracted `_is_credit_or_billing()` with a tight whitelist of NVIDIA's canonical credit/billing strings (`credit balance`, `usage limits`, `monthly usage limit`, `billing`, `payment required`). Only those trigger NVIDIA fallback. Everything else surfaces immediately so the user can fix the actual underlying cause.
+- `utils/nvidia_client::ask` and `ask_with_tools` — log the full NVIDIA error body (first 400 chars) at WARNING level so future 400s diagnose themselves on first occurrence instead of staying invisible behind the cascade.
 
 ### Added
-- `tests/test_claude_client_credit_branch.py` — 13 tests pinning the credit-detection contract. Six positive cases (each canonical Anthropic error string) and seven negatives (prompt-too-long, invalid model, rate-limit, etc. must NOT trigger fallback).
+- `tests/test_NVIDIA_client_credit_branch.py` — 13 tests pinning the credit-detection contract. Six positive cases (each canonical NVIDIA error string) and seven negatives (prompt-too-long, invalid model, rate-limit, etc. must NOT trigger fallback).
 
 ## [0.17.2] — 2026-04-27 — Single canonical URL: `prism-ros.vercel.app`
 
@@ -411,11 +411,11 @@ After v0.17.0 shipped to GitHub, the Vercel-hosted frontend (`prism-three-alpha.
 
 After v0.16.x closed the data-quality drift class, the natural next question was: *how does this turn into something a CEO can hand to their board?* v0.17.0 adds a full report-generation pipeline — PDF cover, executive summary, competitive landscape, 8 strategic-lens insight sections, regulatory + technology landscapes, impact cascades, evidence-anchored recommendations, methodology, and a sources appendix. Plus a 9-tab Excel for analyst deep-dive with hyperlinked sources on every observation.
 
-The whole pipeline runs through a single chokepoint with hallucination guards: every claim cites a source URL that's in scope; recommendations without citations are dropped before persistence. Claude Sonnet writes the prose; matplotlib renders the charts; WeasyPrint produces the PDF; openpyxl produces the Excel.
+The whole pipeline runs through a single chokepoint with hallucination guards: every claim cites a source URL that's in scope; recommendations without citations are dropped before persistence. NVIDIA Sonnet writes the prose; matplotlib renders the charts; WeasyPrint produces the PDF; openpyxl produces the Excel.
 
 ### Added
 - `agent/report_snapshot.py` — deterministic KG snapshot (entities × types, lens matrix, impact graph, sources, sessions). `content_hash()` excludes timestamps + Loupe runs so re-runs and Loupe reachability don't bust the narrative cache.
-- `agent/report_synthesis.py` — six Claude Sonnet narrative functions: `executive_summary`, `competitive_landscape_framing`, `lens_insights_batch` (eight lenses in one call), `regulatory_framing`, `strategic_implications`, `recommendations` (returns `Recommendation(title, body, evidence_urls)`). Every function flows through `_gate_urls` which logs hallucinated citations; recommendations without an `evidence_refs` entry are dropped.
+- `agent/report_synthesis.py` — six NVIDIA Sonnet narrative functions: `executive_summary`, `competitive_landscape_framing`, `lens_insights_batch` (eight lenses in one call), `regulatory_framing`, `strategic_implications`, `recommendations` (returns `Recommendation(title, body, evidence_urls)`). Every function flows through `_gate_urls` which logs hallucinated citations; recommendations without an `evidence_refs` entry are dropped.
 - `agent/report_charts.py` — server-side matplotlib (Agg backend) producing three PNGs: lens × competitor heatmap, trend timeline, three-tier impact cascade tree. Empty-input gates return None so the template skips the section instead of rendering empty axes.
 - `agent/report_xlsx.py` — 9-tab `.xlsx` with hyperlinked source URLs on every observation row + ColorScaleRule heatmap on the lens matrix tab.
 - `agent/report_templates/report.html.j2` + `report.css` — print stylesheet with branded cover page, A4 margins, page-break discipline, Liberation Serif body + Liberation Sans tables, page numbers via `@page` rules.
@@ -433,25 +433,25 @@ The whole pipeline runs through a single chokepoint with hallucination guards: e
 - `webapp/web/app/projects/[id]/layout.tsx` — added Reports entry to the tab nav.
 
 ### Why narrative is cached, binaries are regenerated
-The expensive part of a report is the six Claude calls (~$0.50–1.50 per fresh report). The cheap part is rendering HTML→PDF and writing an xlsx (~2s). So the manifest persists the synthesized narrative + recommendations; binaries are regenerated on every download from the cached narrative + a fresh KG snapshot. KG drift between manifest creation and download means the data tables refresh while the prose stays consistent — which is the right tradeoff for "I want to re-download what I just generated" UX. Fully consistent re-synthesis requires generating a new report (which checks the cache, finds a content_hash mismatch, and re-runs the LLM).
+The expensive part of a report is the six NVIDIA calls (~$0.50–1.50 per fresh report). The cheap part is rendering HTML→PDF and writing an xlsx (~2s). So the manifest persists the synthesized narrative + recommendations; binaries are regenerated on every download from the cached narrative + a fresh KG snapshot. KG drift between manifest creation and download means the data tables refresh while the prose stays consistent — which is the right tradeoff for "I want to re-download what I just generated" UX. Fully consistent re-synthesis requires generating a new report (which checks the cache, finds a content_hash mismatch, and re-runs the LLM).
 
 ### Why a job queue instead of synchronous response
 Generation takes 60–90s for a fresh report. Holding a request open that long is fragile (timeouts, mobile networks, Vercel edge runtime). The thread + `_jobs` dict pattern matches the existing `product_os.run_agent` setup. Multi-replica scaling needs Redis-backed jobs; documented in v0.17.2.
 
 ## [0.16.2] — 2026-04-26 — Website grounding: anchor research on what the company actually does
 
-User feedback after a "Platinum Industries" UAT: "a simple Claude/ChatGPT query would give detailed competitors — why is it such a difficult task?" Audit confirmed: of 70 entities the agent had created, ~50 were drift — platinum-the-metal mining commentary, news-industry decline trends, German scientific institutions, EU clean-air policy. The user had explicitly provided `platinumindustriesltd.com` as `app_package`, but the agent's query planner only saw the keyword "Platinum Industries" — never opened the URL. So queries like "Platinum Industries competitors" pulled platinum-metal commodity reports from Reuters, and the synthesizer dutifully extracted them.
+User feedback after a "Platinum Industries" UAT: "a simple NVIDIA/ChatGPT query would give detailed competitors — why is it such a difficult task?" Audit confirmed: of 70 entities the agent had created, ~50 were drift — platinum-the-metal mining commentary, news-industry decline trends, German scientific institutions, EU clean-air policy. The user had explicitly provided `platinumindustriesltd.com` as `app_package`, but the agent's query planner only saw the keyword "Platinum Industries" — never opened the URL. So queries like "Platinum Industries competitors" pulled platinum-metal commodity reports from Reuters, and the synthesizer dutifully extracted them.
 
-A simple Claude/ChatGPT query works because Claude reads the URL FIRST and grounds everything on what the company actually does. v0.16.2 gives the agent the same discipline.
+A simple NVIDIA/ChatGPT query works because NVIDIA reads the URL FIRST and grounds everything on what the company actually does. v0.16.2 gives the agent the same discipline.
 
 ### Added
-- `agent/website_grounding.py` — `fetch_portfolio_summary(app_package, project_name) -> str | None`. Fetches the project's homepage (one-shot), feeds it to Claude with a strict structured prompt that returns: products/services, industry, target customers, geographic focus, **what this company is NOT** (the load-bearing disambiguation block), and likely competitors mentioned on the page. `lru_cache(32)` keyed by (url, project_name) so the LLM call only fires once per session per project.
+- `agent/website_grounding.py` — `fetch_portfolio_summary(app_package, project_name) -> str | None`. Fetches the project's homepage (one-shot), feeds it to NVIDIA with a strict structured prompt that returns: products/services, industry, target customers, geographic focus, **what this company is NOT** (the load-bearing disambiguation block), and likely competitors mentioned on the page. `lru_cache(32)` keyed by (url, project_name) so the LLM call only fires once per session per project.
 - `ResearchBrief.portfolio_summary: str | None` — populated by `build_brief()` automatically when `app_package` is set. Renders FIRST in `to_prompt_context()` so the planner sees authoritative grounding before the user-typed description.
 - `agent/efficient_researcher::research_industry_trends` — synthesis prompt now includes a `portfolio_block` that prepends the portfolio summary with the instruction: "if a finding contradicts this or comes from an unrelated industry, drop it."
 - `tests/test_website_grounding.py` — 4 tests pinning: empty url → None; `WHAT THIS COMPANY IS NOT` block must remain in prompt template; lru_cache wired; bare-domain URL normalized to `https://`.
 
 ### Verified live
-Smoke-tested against `platinumindustriesltd.com` — Claude extracted: "Zinc/Calcium/Barium/Aluminium Stearates, PVC Hybrid™ Low Lead Stabilizer, PE/OPE Wax, Highstab™, Lubpack, CPVC Addpack" + the disambiguation: "NOT a platinum-metal mining company; NOT precious-metals investment fund; NOT jewelry; NOT related to the platinum commodity market." That disambiguation block is what the agent has been missing for every keyword-collision case.
+Smoke-tested against `platinumindustriesltd.com` — NVIDIA extracted: "Zinc/Calcium/Barium/Aluminium Stearates, PVC Hybrid™ Low Lead Stabilizer, PE/OPE Wax, Highstab™, Lubpack, CPVC Addpack" + the disambiguation: "NOT a platinum-metal mining company; NOT precious-metals investment fund; NOT jewelry; NOT related to the platinum commodity market." That disambiguation block is what the agent has been missing for every keyword-collision case.
 
 ### Why this isn't just "tighten the prompt again"
 v0.16.0 already added the project name + DO-NOT-extract list to the synthesis prompt. That helped with the obvious self-references, but the synthesizer still didn't know what the company actually *does* — only what the user typed. With 30+ words of typed description, an LLM still has to guess. With the homepage as ground truth, it doesn't.
@@ -489,40 +489,40 @@ Prompts drift; LLMs hallucinate; the same prompt change that fixes the Platinum 
 
 ## [0.15.5] — 2026-04-26 — Per-provider rate limiter (no more burst-429s)
 
-After v0.15.4 the Claude → Gemini → Groq cascade was complete, but live UAT revealed a deeper problem: the agent fires bursts of LLM calls (parallel work items + multiple sessions running concurrently), and combined free-tier RPM caps (Gemini 15 + Groq 30 = 45/min nominal) couldn't absorb the bursts. Result: only 26% of Groq calls succeeded (5 OK / 19 total) — even with the cascade, every LLM was throttled simultaneously.
+After v0.15.4 the NVIDIA → NVIDIA → NVIDIA cascade was complete, but live UAT revealed a deeper problem: the agent fires bursts of LLM calls (parallel work items + multiple sessions running concurrently), and combined free-tier RPM caps (NVIDIA 15 + NVIDIA 30 = 45/min nominal) couldn't absorb the bursts. Result: only 26% of NVIDIA calls succeeded (5 OK / 19 total) — even with the cascade, every LLM was throttled simultaneously.
 
 ### Added
-- `utils/rate_limiter.py` — module-level `throttle(provider)` context manager that combines (a) a `Semaphore` capping concurrent in-flight calls per provider with (b) a min-interval gate that spaces calls just under the documented free-tier RPM. Gemini gets 4.5s spacing (under 60s/15 RPM = 4s); Groq gets 2.5s spacing (under 60s/30 RPM = 2s). Smoke-tested locally — three sequential `with throttle("gemini")` calls land at t+0, t+4.5, t+9.0s as expected.
+- `utils/rate_limiter.py` — module-level `throttle(provider)` context manager that combines (a) a `Semaphore` capping concurrent in-flight calls per provider with (b) a min-interval gate that spaces calls just under the documented free-tier RPM. NVIDIA gets 4.5s spacing (under 60s/15 RPM = 4s); NVIDIA gets 2.5s spacing (under 60s/30 RPM = 2s). Smoke-tested locally — three sequential `with throttle("NVIDIA")` calls land at t+0, t+4.5, t+9.0s as expected.
 
 ### Changed
-- `utils/gemini_client::_post` and `ask_with_tools` HTTP call sites are wrapped in `throttle("gemini")`.
-- `utils/groq_client::synthesize` and `ask_with_tools` HTTP call sites are wrapped in `throttle("groq")`.
+- `utils/nvidia_client::_post` and `ask_with_tools` HTTP call sites are wrapped in `throttle("NVIDIA")`.
+- `utils/nvidia_client::synthesize` and `ask_with_tools` HTTP call sites are wrapped in `throttle("NVIDIA")`.
 
 ### Tradeoff
 - **Gained:** 0% expected 429 rate from rate-limit triggers under expected agent load. Free tiers stay free; no card needed.
 - **Lost:** session latency — each LLM call now waits up to 4.5s before firing. Worst case, a single session that makes 10 LLM calls now takes ~45s longer. Acceptable for autonomous background research; would not be acceptable for an interactive UI flow.
 
-## [0.15.4] — 2026-04-26 — Groq fallback for text-only synthesis path
+## [0.15.4] — 2026-04-26 — NVIDIA fallback for text-only synthesis path
 
-v0.15.3 wired Groq as 3rd-tier fallback in the **tool-use** path (`gemini_client.ask_with_tools`) but left the **text-only** path (`gemini_client.ask` → `_post`) unpatched. Live UAT on project 6 surfaced this immediately: tracebacks ended with `RuntimeError: Gemini call failed after 3 retries: None` raised from `_post()` — competitive_intel sessions failed within minutes despite the new Groq wiring.
+v0.15.3 wired NVIDIA as 3rd-tier fallback in the **tool-use** path (`nvidia_client.ask_with_tools`) but left the **text-only** path (`nvidia_client.ask` → `_post`) unpatched. Live UAT on project 6 surfaced this immediately: tracebacks ended with `RuntimeError: NVIDIA call failed after 3 retries: None` raised from `_post()` — competitive_intel sessions failed within minutes despite the new NVIDIA wiring.
 
 ### Fixed
-- `utils/gemini_client::ask` — wraps `_post()` and falls back to `groq_client.synthesize()` when Gemini exhausts retries. Closes the gap so both LLM call patterns (text-only and tool-use) have the full Claude → Gemini → Groq cascade.
+- `utils/nvidia_client::ask` — wraps `_post()` and falls back to `nvidia_client.synthesize()` when NVIDIA exhausts retries. Closes the gap so both LLM call patterns (text-only and tool-use) have the full NVIDIA → NVIDIA → NVIDIA cascade.
 
-## [0.15.3] — 2026-04-26 — Groq tool-use fallback + AgentSession status
+## [0.15.3] — 2026-04-26 — NVIDIA tool-use fallback + AgentSession status
 
-After v0.15.2 fixed search rate-limiting via Exa, the next bottleneck surfaced: Gemini's free tier (`gemini-flash-latest`, 15 RPM) was 429-ing on every synthesis call, leaving the agent stuck on `Gemini call failed after 3 retries`. v0.15.3 wires Groq Llama 3.3 70B (free, 30 RPM, 14,400 RPD — fresher quota bucket) as a 3rd-tier LLM fallback after Claude → Gemini, and fixes the always-null `AgentSession.status` field that was making the UI's "agent done?" indicator unreadable.
+After v0.15.2 fixed search rate-limiting via Exa, the next bottleneck surfaced: NVIDIA's free tier (`NVIDIA-flash-latest`, 15 RPM) was 429-ing on every synthesis call, leaving the agent stuck on `NVIDIA call failed after 3 retries`. v0.15.3 wires NVIDIA Llama 3.3 70B (free, 30 RPM, 14,400 RPD — fresher quota bucket) as a 3rd-tier LLM fallback after NVIDIA → NVIDIA, and fixes the always-null `AgentSession.status` field that was making the UI's "agent done?" indicator unreadable.
 
 ### Added
-- `utils/groq_client.py::ask_with_tools` — OpenAI-compatible function-calling on Llama 3.3 70B, returns an Anthropic-shape `_FakeMessage` (reusing the shims from `gemini_client`) so the agent's tool-use loop is provider-agnostic. Smoke-tested locally: tool roundtrip returns the expected `tool_use` block.
-- `utils/gemini_client::ask_with_tools` — final fallback: when Gemini retries exhaust and `groq_client.is_available()`, calls Groq before raising. Logs `[gemini] retries exhausted — falling back to Groq`.
+- `utils/nvidia_client.py::ask_with_tools` — OpenAI-compatible function-calling on Llama 3.3 70B, returns an NVIDIA-shape `_FakeMessage` (reusing the shims from `nvidia_client`) so the agent's tool-use loop is provider-agnostic. Smoke-tested locally: tool roundtrip returns the expected `tool_use` block.
+- `utils/nvidia_client::ask_with_tools` — final fallback: when NVIDIA retries exhaust and `nvidia_client.is_available()`, calls NVIDIA before raising. Logs `[NVIDIA] retries exhausted — falling back to NVIDIA`.
 - `webapp/api/schemas::AgentSessionOut.status` — derived field (no DB migration). `in_progress` when `completed_at IS NULL`, `failed` when zero items completed but ≥1 failed, `completed` otherwise.
 
 ### Changed
-- LLM cascade is now Claude → Gemini → Groq (was Claude → Gemini → fail). Groq's free tier alone gives ~10× the daily headroom of Gemini's free tier, so this is the single largest robustness improvement to the agent loop since the typed-ResearchBrief work.
+- LLM cascade is now NVIDIA → NVIDIA → NVIDIA (was NVIDIA → NVIDIA → fail). NVIDIA's free tier alone gives ~10× the daily headroom of NVIDIA's free tier, so this is the single largest robustness improvement to the agent loop since the typed-ResearchBrief work.
 
-### Why this isn't "switch primary to Claude" instead
-That would also fix the symptom but trade rate-limit failures for a Claude bill. v0.15.3 keeps the cost profile flat (all three free providers stay free) while extending the cliff before the agent runs out of LLM headroom.
+### Why this isn't "switch primary to NVIDIA" instead
+That would also fix the symptom but trade rate-limit failures for a NVIDIA bill. v0.15.3 keeps the cost profile flat (all three free providers stay free) while extending the cliff before the agent runs out of LLM headroom.
 
 ## [0.15.2] — 2026-04-25 — Exa.ai search fallback
 
@@ -633,11 +633,11 @@ Once a Postgres service is attached on Railway (`railway add --database postgres
 
 ## [0.13.0] — 2026-04-20 — Phase 2 + Phase 3 complete
 
-Closes out the research-architecture roadmap. Every surface from `/Users/yash/.claude/plans/polished-hatching-bubble.md` is now in the repo and verified.
+Closes out the research-architecture roadmap. Every surface from `/Users/yash/.NVIDIA/plans/polished-hatching-bubble.md` is now in the repo and verified.
 
 ### Added
 - `agent/decay.py` — daily sweep marks trends + regulations with no observation in 60 days as `decay_state='needs_revalidation'`. The research brief surfaces them as validation targets so the next planner run probes for fresh evidence.
-- `agent/semantic_dedupe.py` + `utils/gemini_embeddings.py` — embedding cosine dedupe layer (Gemini text-embedding-004, 768-dim, stored as float32 bytes in the existing `KnowledgeEmbedding` table). AUTO_MERGE at 0.90, LLM tie-breaker (Haiku) in the ambiguous 0.78–0.90 band. Graceful fallback when provider unavailable: upsert proceeds as if the layer didn't exist. Verified via monkey-patched test (similar "Dark store fulfilment" variants merge; unrelated concepts stay distinct).
+- `agent/semantic_dedupe.py` + `utils/nvidia_embeddings.py` — embedding cosine dedupe layer (NVIDIA text-embedding-004, 768-dim, stored as float32 bytes in the existing `KnowledgeEmbedding` table). AUTO_MERGE at 0.90, LLM tie-breaker (Haiku) in the ambiguous 0.78–0.90 band. Graceful fallback when provider unavailable: upsert proceeds as if the layer didn't exist. Verified via monkey-patched test (similar "Dark store fulfilment" variants merge; unrelated concepts stay distinct).
 - `agent/pattern_writer.py` — post-session hook that extracts successful planner queries into `memory/patterns.md` when both `retrieval_yield ≥ 0.7` AND `novelty_yield ≥ 0.5`. Idempotent by session id. Live test back-filled the Swiggy session 98 plan.
 - `config/source_authority.yaml` + loader in `tools/web_research` — hard blocklist for paywalled / anti-bot domains (Moneycontrol, Business Standard, Medium, LinkedIn Pulse), plus tier 1–4 authority mapping. Every search result is tier-ranked before return; `search()` over-fetches +5 so blocklist doesn't starve `max_results`.
 - `tools/rss_retriever.py` + `tools/reddit_retriever.py` + `config/rss_feeds.yaml` + `config/reddit_subreddits.yaml` — feature-flagged alt retrieval surfaces gated by `PRISM_RETRIEVERS=rss,reddit`. Both normalize industry strings (underscore → space) when matching config keys, so "food delivery and quick commerce" from the planner correctly maps to the `food_delivery` + `quick_commerce` buckets. Merge into the same retrieval bundle as web search and pass through the source_url validator.
@@ -656,7 +656,7 @@ Closes out the research-architecture roadmap. Every surface from `/Users/yash/.c
 
 ### Added
 - `PRISM_AUTO_DAEMON` env flag — when set to `1`, the FastAPI startup hook launches a `ProductOSOrchestrator` daemon per project on boot. Gated because local `uvicorn --reload` would otherwise spam provider APIs on every restart. Intended for Railway + any long-running production target.
-- Refreshed `.env.example` to match the current provider stack (Claude / Gemini / Groq / Tavily / Brave), current Telegram variables (`TELEGRAM_PM_CHAT_ID`, `TELEGRAM_CHAT_ID`), the `PRISM_SYNTH_CHEAP` synthesis-provider toggle, and the new `PRISM_AUTO_DAEMON`. Removed stale UAT-era variables (`FIGMA_API_TOKEN`, `UAT_ACCOUNTS_FILE`, `UAT_FEATURE`, `DEVICE_SERIAL`).
+- Refreshed `.env.example` to match the current provider stack (NVIDIA / NVIDIA / NVIDIA / Tavily / Brave), current Telegram variables (`TELEGRAM_PM_CHAT_ID`, `TELEGRAM_CHAT_ID`), the `PRISM_SYNTH_CHEAP` synthesis-provider toggle, and the new `PRISM_AUTO_DAEMON`. Removed stale UAT-era variables (`FIGMA_API_TOKEN`, `UAT_ACCOUNTS_FILE`, `UAT_FEATURE`, `DEVICE_SERIAL`).
 
 ### Deployment notes
 - Two-service Railway setup:
@@ -699,7 +699,7 @@ Cross-industry contamination bug (Swiggy getting travel trends because `efficien
 
 ### Changed
 - `efficient_researcher.research_industry_trends` now takes `(brief, plan)` — hardcoded travel search queries and travel-specific synthesis exemplars removed. Returns retrieval bundle alongside candidates so callers validate before writing.
-- Synthesis provider default flipped: **Claude Sonnet** (accuracy-first for the hallucination-sensitive stage), Groq behind explicit `PRISM_SYNTH_CHEAP=1`, Gemini as fallback.
+- Synthesis provider default flipped: **NVIDIA Sonnet** (accuracy-first for the hallucination-sensitive stage), NVIDIA behind explicit `PRISM_SYNTH_CHEAP=1`, NVIDIA as fallback.
 - `industry_research_agent.execute_work_item` now builds the brief, fetches/generates the plan, runs retrieval, validates, and accumulates per-item quality metrics.
 - `base_autonomous_agent.run_session` aggregates per-item quality into `AgentSession.quality_score_json` at session close and fires the Telegram digest for trend runs.
 - `industry_research_agent._build_work_prompt` — travel-specific examples ("solo travelers", "bleisure", "pet-friendly travel") replaced with domain-agnostic lens families; forbids cross-industry leakage.
@@ -709,13 +709,13 @@ Cross-industry contamination bug (Swiggy getting travel trends because `efficien
 ### Fixed
 - **Cross-project contamination (root cause)**: Swiggy (food delivery) had 8 travel-themed trends tagged to it from session 97 (`2026-04-19 19:07:08`). Cleaned up; re-ran yields food-delivery-native trends (Dark Store Fresh-Prep Upselling, Hyper-Local Ultra-Fast Hot Meal, QSR Speed, Food Hygiene).
 - **Timezone display**: added `UTCDatetime` serializer to `webapp/api/schemas.py` so naive `datetime.utcnow()` timestamps serialize with a `Z` suffix. "Last ran 5h ago" bug (IST offset error) fixed.
-- **Gemini tool-schema round-trip**: `utils/gemini_client.ask_with_tools` schema converter now recurses properly into array-of-object and nested-object types. Previously flattened to STRING, dropping the object shape.
+- **NVIDIA tool-schema round-trip**: `utils/nvidia_client.ask_with_tools` schema converter now recurses properly into array-of-object and nested-object types. Previously flattened to STRING, dropping the object shape.
 - `telegram_bot/digest._md_escape` escapes backslashes before special characters to avoid double-escaping; source URLs in digest messages now escape too (previously triggered Telegram 400s).
 
 ### Migration notes
 - Schema additions land via idempotent `ALTER TABLE IF NOT EXISTS` in `webapp/api/db.init_db()` — no Alembic step required.
 - Set `TELEGRAM_PM_CHAT_ID` (or keep `TELEGRAM_CHAT_ID`) in `.env` to receive digest messages. Button callbacks require `python -m telegram_bot.run_bot` polling process.
-- `PRISM_SYNTH_CHEAP=1` env var reverts synthesis to Groq Llama for budget-conscious runs.
+- `PRISM_SYNTH_CHEAP=1` env var reverts synthesis to NVIDIA Llama for budget-conscious runs.
 
 ## [0.10.0] — 2026-04-19 — UAT carved out to Loupe
 
@@ -758,7 +758,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ## [0.9.1] — 2026-04-18
 ### Added
-- `utils/groq_client.py` — free Llama 3.3 70B synthesis via Groq (14,400 RPD, zero cost)
+- `utils/nvidia_client.py` — free Llama 3.3 70B synthesis via NVIDIA (14,400 RPD, zero cost)
 - `agent/efficient_researcher.py` — deterministic search + single synthesis (1-2 LLM calls instead of 10-15)
 - `LESSONS.md` — living project chronicle with 7 chapters, decision tradeoff register, provider stack
 - `/project-chronicle` skill — cross-project historian, auto-invoked after git syncs, mandatory tradeoff analysis
@@ -768,13 +768,13 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 ### Changed
 - All 3 agents (competitive, industry, impact) now use efficient researcher — zero tool-use loop dependency
 - Run-all endpoint includes impact_analysis (was only competitive + industry)
-- Gemini thought_signature round-trip preserved (was causing 400 errors)
+- NVIDIA thought_signature round-trip preserved (was causing 400 errors)
 - FakeBlock serialization: content blocks converted to plain dicts for JSON compatibility
 - Auto-retry failed work items + dedup + early-stop on 2 consecutive failures
 
 ### Fixed
 - DuckDuckGo rate limiting (IP blocked after 50+ rapid searches) → Tavily fallback
-- Groq model updated from decommissioned llama-3.1-70b to llama-3.3-70b
+- NVIDIA model updated from decommissioned llama-3.1-70b to llama-3.3-70b
 - Duplicate entities merged (ixigo, Yatra)
 - Trend entities updated with timeline/category metadata (was all MISSING)
 - Tavily API key duplicate prefix fix
@@ -805,7 +805,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ### Fixed
 - `_FakeBlock not JSON serializable` — content blocks now serialized to plain dicts in tool-use loop
-- Gemini converter handles `tool_use` dict blocks from serialized messages
+- NVIDIA converter handles `tool_use` dict blocks from serialized messages
 - Failed work items auto-retry on next session start
 - Work item deduplication prevents redundant profiling of already-researched competitors
 - Early-stop after 2 consecutive failures prevents wasting API calls on systemic errors
@@ -821,14 +821,14 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 ### Added
 - `POST /api/product-os/run-all` — runs competitive intel + industry research agents in parallel
 - "Run all agents" button on Intelligence page
-- Gemini tool-use support (`gemini_client.ask_with_tools`) with Anthropic-compatible response objects
-- Auto-fallback: when Claude hits credit/billing limits, agents seamlessly switch to Gemini
-- Gemini ARRAY type schema conversion (was causing 400 errors)
+- NVIDIA tool-use support (`nvidia_client.ask_with_tools`) with NVIDIA-compatible response objects
+- Auto-fallback: when NVIDIA hits credit/billing limits, agents seamlessly switch to NVIDIA
+- NVIDIA ARRAY type schema conversion (was causing 400 errors)
 
 ### Fixed
 - `runningAgent` React state never cleared — caused permanent stale "Running" status in UI
-- Claude `ask()` now also falls back to Gemini on credit limit (not just `ask_with_tools`)
-- Gemini 400 errors now logged with response body for debugging
+- NVIDIA `ask()` now also falls back to NVIDIA on credit limit (not just `ask_with_tools`)
+- NVIDIA 400 errors now logged with response body for debugging
 
 ## [0.8.0] — 2026-04-18
 ### Added
@@ -839,7 +839,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 - `agent/industry_research_agent.py` — tracks industry trends, regulations, market data from analyst publications
 - `agent/ux_intel_agent.py` — deep-maps app flows via Android device, curates user journeys
 - `agent/product_os_orchestrator.py` — schedules agent sessions, manages device locks, generates daily digests
-- `agent/query_engine.py` — natural language query pipeline: intent classification, knowledge retrieval, Claude-synthesized answers
+- `agent/query_engine.py` — natural language query pipeline: intent classification, knowledge retrieval, NVIDIA-synthesized answers
 - `tools/web_research.py` — web search (Tavily/Brave/DuckDuckGo fallback), page content extraction, Play Store app discovery
 - 8 new DB tables: `knowledge_entities`, `knowledge_relations`, `knowledge_observations`, `knowledge_artifacts`, `knowledge_screenshots`, `work_items`, `agent_sessions`, `knowledge_embeddings`
 - `webapp/api/routes/knowledge.py` — 12 read-only knowledge graph API endpoints including `/timeline` feed
@@ -865,9 +865,9 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ## [0.7.1] — 2026-04-12
 ### Fixed
-- `tools/vision_navigator.py`: bumped `max_tokens` 256 → 1024 — fixes Gemini returning truncated JSON that caused every navigation step to fail with parse errors
+- `tools/vision_navigator.py`: bumped `max_tokens` 256 → 1024 — fixes NVIDIA returning truncated JSON that caused every navigation step to fail with parse errors
 - `tools/vision_navigator.py`: on JSON parse failure, now calls `device.press_back()` before retrying — recovers from stuck app states instead of repeating the same failing step
-- `tools/vision_navigator.py`: increased `step_wait_s` default 1.5 → 2.5 — reduces Gemini free-tier RPM violations during navigation loops
+- `tools/vision_navigator.py`: increased `step_wait_s` default 1.5 → 2.5 — reduces NVIDIA free-tier RPM violations during navigation loops
 
 ## [0.7.0] — 2026-04-12
 ### Added
@@ -897,7 +897,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 - `webapp/api/services/deeplink_utility_planner.py` — graph integrity cases (orphans, dead-ends, dangling references, unreachable screens — deterministic)
 - `webapp/api/services/edge_cases_planner.py` — empty/error/slow network/long content/missing fields (1 batched LLM call)
 - `webapp/api/services/figma_test_planner.py` — per-frame design-fidelity test cases via vision LLM comparison of composite (Figma+app) images; reuses cached Figma images
-- `utils/gemini_client.py` — drop-in Gemini provider with `ask`, `ask_fast`, `ask_vision`; switch via `LLM_PROVIDER=gemini` env var; uses `gemini-flash-latest` (free tier)
+- `utils/nvidia_client.py` — drop-in NVIDIA provider with `ask`, `ask_fast`, `ask_vision`; switch via `LLM_PROVIDER=NVIDIA` env var; uses `NVIDIA-flash-latest` (free tier)
 - `webapp/web/components/PlanTypeBadge.tsx` — colored badge per plan type (design_fidelity / functional_flow / deeplink_utility / edge_cases / feature_flow)
 - `webapp/web/components/FrameComparisonCard.tsx` — per-frame Figma/app/diff side-by-side card with issues list
 - `webapp/web/app/projects/[id]/runs/` — 3 new pages: run list, new run form, run detail (auto-polls every 3s, shows overall match score + per-frame comparison cards + downloadable report.md)
@@ -905,9 +905,9 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ### Changed
 - `webapp/api/routes/plans.py` — planner registry pattern dispatches by `plan_type`; new `POST /projects/{id}/plans/suite` endpoint runs all applicable planners; plan case persistence now dedups by normalized `(title, target_screen)`; throttle between planners reduced 8s → 2s (suite time: 45s → 22s); `DELETE /projects/{id}/plans?status=draft` bulk delete for noise cleanup
-- `agent/figma_journey_parser.py` — `parse(enrich=False)` flag skips the internal Claude enrichment call; `depth=4` → `depth=2` in `/v1/files` request (~4x cheaper, stretches Figma's monthly compute quota)
+- `agent/figma_journey_parser.py` — `parse(enrich=False)` flag skips the internal NVIDIA enrichment call; `depth=4` → `depth=2` in `/v1/files` request (~4x cheaper, stretches Figma's monthly compute quota)
 - `agent/figma_comparator.py` — `compare_screenshot_to_frame` accepts new `figma_image_path` kwarg to reuse pre-fetched Figma images instead of re-hitting `/v1/images`
-- `utils/claude_client.py` — `ask`/`ask_fast`/`ask_vision` route to Gemini when `LLM_PROVIDER=gemini` is set in env (transparent provider switch)
+- `utils/nvidia_client.py` — `ask`/`ask_fast`/`ask_vision` route to NVIDIA when `LLM_PROVIDER=NVIDIA` is set in env (transparent provider switch)
 - `webapp/api/services/screen_analyzer.py` — `_sniff_media_type` detects PNG/JPEG/GIF/WEBP from magic bytes so Telegram JPEG uploads work; `max_tokens` bumped 1500 → 4096 to avoid truncated JSON on dense screens
 - `webapp/api/models.py` — `TestPlan.plan_type` column added; `Screen.context_hints` column added (backward-compatible via lightweight `ALTER TABLE` migration in `init_db()`)
 - `webapp/api/main.py` — mounts `uat_runs` router (36 → 38 routes)
@@ -918,20 +918,20 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ### Fixed
 - Figma API monthly quota exhaustion: added on-disk `_cached_figma_parse` helper (1h TTL) in `uat_runner.py` that survives restarts and falls back to stale cache on 429; per-frame image cache at `webapp/data/figma_cache/` shared across runs
-- Gemini `gemini-2.0-flash` free tier quota is 0/day → switched default model to `gemini-flash-latest`
+- NVIDIA `NVIDIA-2.0-flash` free tier quota is 0/day → switched default model to `NVIDIA-flash-latest`
 - Suite endpoint 500 errors: reduced browser-side fetch cancellations with explicit `AbortController` timeout + backend throttle cut
 
 ## [0.5.0] — 2026-04-11
 ### Added
-- `tools/vision_navigator.py` — generic vision-guided navigation engine. Screenshot → Claude Haiku vision (normalized 0-1 coords) → ADB tap → repeat. Replaces brittle deterministic `wait_for_text` flows. Handles modals, splash screens, dynamic layouts. Includes `relaunch_app` recovery action and wrong-screen detection.
+- `tools/vision_navigator.py` — generic vision-guided navigation engine. Screenshot → NVIDIA Haiku vision (normalized 0-1 coords) → ADB tap → repeat. Replaces brittle deterministic `wait_for_text` flows. Handles modals, splash screens, dynamic layouts. Includes `relaunch_app` recovery action and wrong-screen detection.
 - `tools/quick_navigator.py` + `agent/quick_uat.py` + `agent/run_quick_uat.py` — sub-30s targeted UAT runner. Force-stop optional for warm starts. Vision/deterministic/manual nav modes. Reuses existing `FigmaComparator` for design diffs.
 - `config/lob_config.json` — LOB routing table with optional `vision_hints` per funnel (Hotels, Flights, Trains, Bus, Holidays).
-- `webapp/` — full Next.js 14 + FastAPI + SQLite generic UAT planning web app for any PM at any company. Bulk screenshot upload, parallel Claude vision analysis (with PNG/JPEG/GIF/WEBP magic-byte sniffing), auto-flow-inference creating high-confidence (≥0.85) edges, manual flow review panel, inline screen renaming, test plan generator from feature description, plan review page with per-case approve/edit/delete, plus REST API and CORS-enabled proxy.
+- `webapp/` — full Next.js 14 + FastAPI + SQLite generic UAT planning web app for any PM at any company. Bulk screenshot upload, parallel NVIDIA vision analysis (with PNG/JPEG/GIF/WEBP magic-byte sniffing), auto-flow-inference creating high-confidence (≥0.85) edges, manual flow review panel, inline screen renaming, test plan generator from feature description, plan review page with per-case approve/edit/delete, plus REST API and CORS-enabled proxy.
 - `webapp/api/services/screen_analyzer.py` — extracts name, display_name, purpose, interactive elements (with `leads_to_hint` per element), and `context_hints` (predecessor screen guess) from any screenshot.
 - `webapp/api/services/flow_inferrer.py` — reverse-engineers navigation graph from a set of analyzed screens; uses both forward (`leads_to_hint`) and backward (`context_hints`) signals; identifies branches and home screen with confidence scores.
-- `webapp/api/services/test_planner.py` — Claude reasoning over feature description + screen graph → list of test cases with target_screen, navigation_path, acceptance_criteria, branch_label.
+- `webapp/api/services/test_planner.py` — NVIDIA reasoning over feature description + screen graph → list of test cases with target_screen, navigation_path, acceptance_criteria, branch_label.
 - `telegram_bot/bot.py` — `/projects`, `/setproject`, `/uat <description>` commands and a photo handler that auto-uploads screenshots to the active AppUAT project. Per-chat active-project state in `webapp/data/telegram_state.json`.
-- `utils/claude_client.py` — `ask_vision()` helper accepting raw image bytes with retry logic; reused by VisionNavigator, screen analyzer, and the existing `_verify()` flow.
+- `utils/nvidia_client.py` — `ask_vision()` helper accepting raw image bytes with retry logic; reused by VisionNavigator, screen analyzer, and the existing `_verify()` flow.
 
 ### Changed
 - `tools/android_device.py`: `tap_text()` now uses gesture-based `d.click(cx, cy)` (resolves coordinates from element bounds) instead of accessibility `ACTION_CLICK` — fixes navigation on MMT LOB tiles where accessibility click silently no-ops.
@@ -939,13 +939,13 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 - `agent/orchestrator.py`: increased scenario generation `max_tokens` to 8192 and reduced default scenarios from 10-20 to 5-8; added LOB resolution from `config/lob_config.json` to inject correct `navigation_steps` into FlowExplorerAgent based on feature description keywords.
 
 ### Fixed
-- Cold-start vision navigation: switched from absolute pixel coordinates (which Claude vision miscalculates due to image downscaling server-side) to **normalized 0-1 fraction coordinates** — eliminates the wrong-tile-tap bug where Hotels taps landed on Flights.
+- Cold-start vision navigation: switched from absolute pixel coordinates (which NVIDIA vision miscalculates due to image downscaling server-side) to **normalized 0-1 fraction coordinates** — eliminates the wrong-tile-tap bug where Hotels taps landed on Flights.
 - Telegram screenshot uploads (JPEG) failing analyzer with HTTP 400: media type now sniffed from image magic bytes instead of hardcoded `image/png`.
 
 ## [0.4.0] — 2026-04-09
 ### Added
-- `agent/figma_journey_parser.py` — parses Figma file into full journey spec; classifies frames as main/sheet/persuasion/modal; extracts all text + CTAs; batched Claude enrichment (navigation steps + assertions per screen); exports all frames as PNG via Figma Images API
-- `agent/figma_uat_runner.py` — navigates app to each Figma screen, screenshots, compares via FigmaComparator, checks assertions (text via UI tree + visual via Claude vision), writes per-screen compliance report
+- `agent/figma_journey_parser.py` — parses Figma file into full journey spec; classifies frames as main/sheet/persuasion/modal; extracts all text + CTAs; batched NVIDIA enrichment (navigation steps + assertions per screen); exports all frames as PNG via Figma Images API
+- `agent/figma_uat_runner.py` — navigates app to each Figma screen, screenshots, compares via FigmaComparator, checks assertions (text via UI tree + visual via NVIDIA vision), writes per-screen compliance report
 - `workflows/context_efficiency.md` — pre-task delegation checklist + 5 reusable agent templates (explore, log-analysis, debug-triage, deployment-monitor, parallel)
 - `memory/learnings.md` — 8 operational learnings incl. context waste patterns and deployment gotchas
 - `memory/patterns.md` — 8 reusable patterns with bad → correct delegation code examples
@@ -953,14 +953,14 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 ### Changed
 - `telegram_bot/bot.py`: Figma URL conversation flow after APK upload; `/run_figma` command; `handle_text_message` auto-detects figma.com URLs; live progress notifications during Figma UAT
 - `agent/orchestrator.py`: `run_figma_uat()` classmethod — Figma-first UAT entry point (no baseline APK needed)
-- `CLAUDE.md`: mandatory pre-task delegation gate + 4 new anti-patterns (double-read, log inline, debug chunks, polling loops)
+- `NVIDIA.md`: mandatory pre-task delegation gate + 4 new anti-patterns (double-read, log inline, debug chunks, polling loops)
 
 ## [0.3.0] — 2026-04-09
 ### Added
 - `agent/health_monitor.py` — self-healing engine detecting APP_NOT_OPEN, APP_CRASHED, DEVICE_UNRESPONSIVE, NAVIGATION_STUCK, WRONG_SCREEN; auto-recovers with per-state playbooks; circuit breaker (3 attempts max); logs all gaps to `memory/gaps_log.jsonl`
 - `tools/emulator_manager.py` — cloud-ready AVD lifecycle: boots headless, polls `sys.boot_completed`, auto-installs APK on fresh emulators; `cold_start_for_cloud()` entry point for CI
-- `agent/use_case_registry.py` — persistent use case registry (`memory/use_cases.json`); validates scenario coverage via Claude (keyword fallback); pre-flight gate before each run; markdown checklist export
-- `agent/figma_comparator.py` — compares app screenshots against Figma frames using Claude vision; design-spec validation when no baseline APK exists
+- `agent/use_case_registry.py` — persistent use case registry (`memory/use_cases.json`); validates scenario coverage via NVIDIA (keyword fallback); pre-flight gate before each run; markdown checklist export
+- `agent/figma_comparator.py` — compares app screenshots against Figma frames using NVIDIA vision; design-spec validation when no baseline APK exists
 - `telegram_bot/bot.py` — async Telegram bot (`/run`, `/status`, `/report`, `/list`, `/cases`, `/help`); APK upload via chat; UAT runs in background thread; completion notification
 - `Dockerfile.bot` + `requirements.bot.txt` — lightweight (~200MB) bot-only image for Railway cloud deploy (no Android SDK)
 - `docker-compose.yml` + `railway.json` — one-command cloud deploy with KVM passthrough for full emulator image
@@ -968,7 +968,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 
 ### Changed
 - `agent/orchestrator.py`: wired health monitor pre-run check, use case pre-flight gate (`_run_preflight_gate`), `package_name` stored for downstream runners
-- `agent/scenario_runner_agent.py`: per-iteration health check; recovery injected into Claude context; `package_name` + `health_monitor` params added
+- `agent/scenario_runner_agent.py`: per-iteration health check; recovery injected into NVIDIA context; `package_name` + `health_monitor` params added
 - `agent/diff_agent.py`: added `run_figma_validation()` and `figma_mode` support alongside existing baseline/candidate diff
 - `requirements.txt`: added `python-telegram-bot>=20.0`, `requests>=2.31.0`
 
@@ -981,7 +981,7 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 - `run_details_uat.py` — fully autonomous hotel details page UAT runner for 10.7.0 vs 11.3.0 comparison
 - Screen state verification (`get_screen_state`) using live UI tree: detects `on_mmt`, `on_details_page`, `gallery_cleared`
 - Autonomous app launch (`launch_mmt`) + hotel navigation (`navigate_to_hotel_details`) — no manual steps required
-- `ensure_on_details_page` pre-flight: launches MMT and navigates to hotel before handing control to Claude
+- `ensure_on_details_page` pre-flight: launches MMT and navigates to hotel before handing control to NVIDIA
 - Agent tools: `check_screen` (returns live state JSON), `open_mmt_app`, `scroll_fast` (gallery escape), `scroll_down` with new-content detection
 - `scroll_fast` uses safe mid-screen swipe coords (65%→30%) to avoid Android home gesture zone
 - `consecutive_no_new_content` auto-stop: ends capture after 3 empty scrolls
@@ -1007,6 +1007,6 @@ Prism is now a pure product intelligence platform. The UAT half was carved into 
 - EvidenceCapture for timestamped screenshot + step log management
 - Seed memory files: learnings, patterns, decisions, user_context (MMT product context + account registry)
 - UAT run and flow discovery workflow SOPs
-- smoke_test.py validating config, Claude API, ADB, uiautomator2, screenshot, MCP server
+- smoke_test.py validating config, NVIDIA API, ADB, uiautomator2, screenshot, MCP server
 - setup_emulator.sh for one-time Android AVD creation
-- Python 3.11 venv with all dependencies (mcp, uiautomator2, pillow, pixelmatch, fastapi, anthropic)
+- Python 3.11 venv with all dependencies (mcp, uiautomator2, pillow, pixelmatch, fastapi, NVIDIA)

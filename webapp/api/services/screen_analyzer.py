@@ -1,9 +1,9 @@
-"""Screen analyzer — extracts metadata from a single screenshot via Claude vision.
+"""Screen analyzer — extracts metadata from a single screenshot via NVIDIA vision.
 
 Outputs: name, display_name, purpose, elements, context_hints (where the screen
 likely came from in the navigation flow).
 
-Reuses utils.claude_client.ask_vision (already in the codebase).
+Reuses utils.nvidia_client.ask_vision (already in the codebase).
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import json
 import logging
 import re
 
-from utils.claude_client import FAST_MODEL, ask_vision
+from utils.nvidia_client import FAST_MODEL, ask_vision
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ def analyze_screen(image_bytes: bytes) -> dict:
 
 
 def _parse_json(raw: str) -> dict:
-    """Parse Claude's JSON response, tolerating markdown fences."""
+    """Parse NVIDIA's JSON response, tolerating markdown fences."""
     text = raw.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()

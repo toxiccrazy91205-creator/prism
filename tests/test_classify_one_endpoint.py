@@ -45,7 +45,7 @@ def client(tmp_path):
         db.add(proj)
         db.commit()
         db.refresh(proj)
-        for n in ["OpenAI", "Anthropic", "Google"]:
+        for n in ["OpenAI", "NVIDIA", "Google"]:
             db.add(KnowledgeEntity(
                 project_id=proj.id, entity_type="company",
                 name=n, canonical_name=n.lower(),
@@ -103,7 +103,7 @@ def test_classify_one_industry_report_unmatched(client):
     """Industry report mentioning all competitors equally — no co-signal → unmatched."""
     c, project_id = client
     head = "STATE OF AI INDUSTRY 2025 — Industry Outlook " + "X" * 200
-    body = head + (" OpenAI " * 30) + (" Anthropic " * 25) + (" Google " * 20)
+    body = head + (" OpenAI " * 30) + (" NVIDIA " * 25) + (" Google " * 20)
     pdf = make_synthetic_pdf(body)
     r = c.post(
         f"/api/knowledge/projects/{project_id}/classify-one-report",

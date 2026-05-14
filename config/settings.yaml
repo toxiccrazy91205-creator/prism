@@ -7,8 +7,8 @@ device:
   recording_dir: ".tmp/recordings"
 
 agent:
-  model: "claude-sonnet-4-6"
-  fast_model: "claude-haiku-4-5-20251001"
+  model: "meta/llama-3.1-405b-instruct"
+  fast_model: "meta/llama-3.1-8b-instruct"
   max_tokens: 4096
   max_parallel_runners: 5    # Max ScenarioRunnerAgents running simultaneously
   exploration_depth: 20      # Max screens to visit per flow exploration

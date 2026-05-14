@@ -47,7 +47,7 @@ def test_url_normalization_handles_bare_domain(monkeypatch):
 
     monkeypatch.setattr("tools.web_research.WebResearcher", _StubWeb)
     # also stub the LLM so we don't make a real call
-    monkeypatch.setattr("utils.claude_client.ask", lambda *a, **kw: "GROUNDING_FAILED")
+    monkeypatch.setattr("utils.nvidia_client.ask", lambda *a, **kw: "GROUNDING_FAILED")
 
     # Clear cache so this test isn't a hit on previous runs
     _cached_summary.cache_clear()

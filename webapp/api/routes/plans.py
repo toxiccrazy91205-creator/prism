@@ -112,7 +112,7 @@ def create_suite(
     """Generate a comprehensive UAT suite — one plan per plan_type.
 
     Runs the planners sequentially with throttling between them to respect
-    Gemini RPM limits. Skips `design_fidelity` if no figma_file_id is provided.
+    NVIDIA RPM limits. Skips `design_fidelity` if no figma_file_id is provided.
     Returns all generated plans in one list.
     """
     # Determine which plan types to run (design_fidelity moved to Loupe in v0.10.0)
@@ -137,7 +137,7 @@ def create_suite(
             logger.error(f"[suite] {ptype} failed: {exc}")
             # Continue with other planners — partial success is better than all-or-nothing
         # Throttle between planners (skip after the last one).
-        # 2s is enough between Gemini calls since most planners are deterministic.
+        # 2s is enough between NVIDIA calls since most planners are deterministic.
         if i < len(plan_types) - 1:
             time.sleep(2)
 

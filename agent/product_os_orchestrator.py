@@ -58,7 +58,7 @@ DEFAULT_CONFIG: dict[str, dict[str, Any]] = {
     # Daily digest push. Runs once per 24h per project, reads the last 24h of
     # intel output, synthesizes, pushes to Telegram if PRISM_DIGEST_CHAT_ID
     # is set. Duration cap is just a safety net — the digest itself is a
-    # single Claude synthesis call that takes <30s normally.
+    # single NVIDIA synthesis call that takes <30s normally.
     "digest": {
         "interval_hours": 24,
         "max_session_duration_s": 120,
@@ -438,7 +438,7 @@ class ProductOSOrchestrator:
         """Generate a daily summary of what agents have learned.
 
         Synthesizes the last 24 hours of observations, entities, and
-        artifacts into an actionable digest using Claude.
+        artifacts into an actionable digest using NVIDIA.
 
         Args:
             telegram_chat_id: Optional — included in context but sending
@@ -494,7 +494,7 @@ class ProductOSOrchestrator:
             if not recent_observations and not new_entities and not new_artifacts:
                 return "No new intelligence gathered in the last 24 hours."
 
-            # Build context for Claude synthesis
+            # Build context for NVIDIA synthesis
             obs_lines = [
                 f"- [{o.observation_type}] {o.content[:200]}"
                 for o in recent_observations[:30]
@@ -521,7 +521,7 @@ class ProductOSOrchestrator:
                 + "\n\nWrite the digest now."
             )
 
-            from utils.claude_client import ask
+            from utils.nvidia_client import ask
 
             summary = ask(prompt, max_tokens=1024)
             return summary

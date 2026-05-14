@@ -166,7 +166,7 @@ Pressure-test specifically:
 
 | Decision | Gained | Lost | Net |
 |---|---|---|---|
-| Jaccard 3-gram vs embedding similarity | Sub-ms, deterministic, zero dep | Misses pure-paraphrase dupes ("revenue grew 30%" vs "30% YoY revenue growth") | Acceptable; embedding dedupe would add Groq quota cost per write |
+| Jaccard 3-gram vs embedding similarity | Sub-ms, deterministic, zero dep | Misses pure-paraphrase dupes ("revenue grew 30%" vs "30% YoY revenue growth") | Acceptable; embedding dedupe would add NVIDIA quota cost per write |
 | Dedupe on insert vs nightly batch | Stops bleeding immediately | Adds ~10-50ms per `add_observation` | Worth it; agents do bulk insert in hot paths anyway |
 | Default-hide `quality_score < 0.3` | UI cleaner | Some users may genuinely want low-quality data | Escape valve via flag |
 | Retroactive cleanup is destructive | One-time win | Can't undo a bad merge | Gated behind `--apply` flag; `--dry-run` first |

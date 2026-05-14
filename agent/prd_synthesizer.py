@@ -20,7 +20,7 @@ Graceful degradation:
   - No matching Prism entities → PRD section 1 says "no market context yet"
   - No matching Loupe runs → PRD section 2 says "no UAT coverage for this feature"
   - Loupe unreachable → PRD section 2 says "design evidence unavailable"
-  - LLM provider exhausted → falls back via claude_client cascade
+  - LLM provider exhausted → falls back via nvidia_client cascade
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from agent.knowledge_store import KnowledgeStore
 from agent.research_brief import build_brief
-from utils import claude_client, loupe_client
+from utils import nvidia_client, loupe_client
 from webapp.api.models import Project
 
 logger = logging.getLogger(__name__)
@@ -225,11 +225,11 @@ explicitly say so. Do NOT fabricate verdicts, match scores, or competitor featur
 that are not in the evidence above."""
 
     # 5) Synthesize
-    markdown = claude_client.ask(
+    markdown = nvidia_client.ask(
         prompt=user_prompt,
         system=PRD_SYSTEM_PROMPT,
         max_tokens=3000,
-        model=claude_client.DEFAULT_MODEL,
+        model=nvidia_client.DEFAULT_MODEL,
     )
 
     # 6) Persist as KnowledgeArtifact

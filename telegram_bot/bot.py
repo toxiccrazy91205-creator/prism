@@ -337,11 +337,11 @@ async def _intel_ask(update: Update, question: str) -> None:
         db = SessionLocal()
         try:
             ks = KnowledgeStore(db, "query", pid)
-            # Simple: search entities + observations, synthesize with Claude
+            # Simple: search entities + observations, synthesize with NVIDIA
             results = ks.semantic_search(question, top_k=10)
             entities = ks.find_entities(name_like=question.split()[0] if question.split() else None, limit=5)
 
-            from utils.claude_client import ask as claude_ask
+            from utils.nvidia_client import ask as NVIDIA_ask
             context_parts = []
             for e in entities:
                 context_parts.append(f"Entity: {e['name']} ({e['entity_type']}): {e.get('description', '')}")
@@ -352,7 +352,7 @@ async def _intel_ask(update: Update, question: str) -> None:
                 await update.message.reply_text("No relevant knowledge found yet. Run some agent sessions first.")
                 return
 
-            answer = claude_ask(
+            answer = NVIDIA_ask(
                 f"Based on this knowledge, answer the question concisely:\n\n"
                 f"Knowledge:\n" + "\n".join(context_parts) + f"\n\nQuestion: {question}",
                 max_tokens=1024,

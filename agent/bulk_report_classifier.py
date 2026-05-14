@@ -160,7 +160,7 @@ def _normalize_for_match(s: str) -> str:
 # ---------------------------------------------------------------------------
 # v0.21.4: deterministic body-text matcher with structural co-signal gate
 #
-# Background: an "AI Industry Report 2025" can mention OpenAI 100×, Anthropic
+# Background: an "AI Industry Report 2025" can mention OpenAI 100×, NVIDIA
 # 30×, Google 25×. Pure dominance ratio (100/30 = 3.3×) above the 3× threshold
 # would misattribute the report to OpenAI. Code review (Apr 2026) caught
 # this. We now require a STRUCTURAL CO-SIGNAL in addition to dominance:
@@ -214,7 +214,7 @@ def _has_structural_signal(needle_lower: str, filename: str, head_text: str, ful
 
     v0.21.4 (review must-fix #5): the previous implementation was a 500-char
     proximity window around marker-anywhere. An industry report aggregating
-    SEC filings ('Below we summarize the FORM 10-K of OpenAI, Anthropic...')
+    SEC filings ('Below we summarize the FORM 10-K of OpenAI, NVIDIA...')
     would still pass. Authentic filings have the marker + company name BOTH
     on the cover page (first 2000 chars). Tightened accordingly.
 
@@ -510,20 +510,20 @@ def classify(
 
 
 # ---------------------------------------------------------------------------
-# LLM dispatch — Groq primary, Claude fallback. Mirrors agent.business_history.
+# LLM dispatch — NVIDIA primary, NVIDIA fallback. Mirrors agent.business_history.
 # ---------------------------------------------------------------------------
 
 
 def _call_llm(prompt: str, max_tokens: int = 1024) -> str:
     try:
-        from utils import groq_client
-        if groq_client.is_available():
-            return groq_client.synthesize(prompt, max_tokens=max_tokens)
+        from utils import nvidia_client
+        if nvidia_client.is_available():
+            return nvidia_client.synthesize(prompt, max_tokens=max_tokens)
     except Exception as exc:
-        logger.warning("[bulk_classifier] Groq failed: %s — falling back to Claude", exc)
+        logger.warning("[bulk_classifier] NVIDIA failed: %s — falling back to NVIDIA", exc)
     try:
-        from utils import claude_client
-        return claude_client.ask(prompt, max_tokens=max_tokens)
+        from utils import nvidia_client
+        return nvidia_client.ask(prompt, max_tokens=max_tokens)
     except Exception as exc:
-        logger.error("[bulk_classifier] Claude fallback failed: %s", exc)
+        logger.error("[bulk_classifier] NVIDIA fallback failed: %s", exc)
         return ""

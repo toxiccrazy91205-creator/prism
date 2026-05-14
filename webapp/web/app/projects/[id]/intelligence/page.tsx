@@ -415,7 +415,7 @@ export default function IntelligencePage({ params }: { params: { id: string } })
         else if (completedItems.length > 0) agentState = 'done'
 
         return (
-          <div key={agent.key} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div key={agent.label} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
             {/* Agent header */}
             <div className="p-4 flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">

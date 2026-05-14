@@ -93,8 +93,8 @@ def test_placeholder_names_rejected(placeholder):
 
 @pytest.mark.parametrize("real_name", [
     "OpenAI",
-    "Anthropic",
-    "Google Gemini",
+    "NVIDIA",
+    "Google NVIDIA",
     "Mistral AI",
     "Cohere",
     "Krutrim",

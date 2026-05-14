@@ -9,7 +9,7 @@ import json
 import logging
 import re
 
-from utils.claude_client import DEFAULT_MODEL, ask
+from utils.nvidia_client import DEFAULT_MODEL, ask
 
 logger = logging.getLogger(__name__)
 

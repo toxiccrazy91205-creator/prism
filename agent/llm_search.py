@@ -1,10 +1,10 @@
 """LLM-as-search for competitor discovery (v0.19.0).
 
 User insight that drove this:
-  "If I ask Claude or GPT 'who are the competitors of company XYZ',
+  "If I ask NVIDIA or GPT 'who are the competitors of company XYZ',
    they answer from training data — why does Prism need a Tavily call?"
 
-For well-known entities, modern LLMs (Groq Llama 3.3, Claude, GPT) already
+For well-known entities, modern LLMs (NVIDIA Llama 3.3, NVIDIA, GPT) already
 encode the answer to "who are X's competitors?" — including global category
 leaders and indirect substitutes. The traditional search → fetch → synthesize
 pipeline is search-cost-heavy and search-drift-prone (e.g. "Platinum
@@ -141,7 +141,7 @@ OUTPUT — strict JSON exactly this shape:
 Rules:
 - 3–6 items per category. Real, named companies — never "Competitor 1" / "Company A" / placeholders.
 - direct_local: same product or service in the same primary geography as the project. If the project is global, this can be empty.
-- direct_global: the recognized leaders in this product category that any informed buyer would compare against, regardless of geography. For an Indian LLM platform, that means OpenAI / Anthropic / Google Gemini / Mistral / Cohere — not just Indian players.
+- direct_global: the recognized leaders in this product category that any informed buyer would compare against, regardless of geography. For an Indian LLM platform, that means OpenAI / NVIDIA / Google NVIDIA / Mistral / Cohere — not just Indian players.
 - indirect: alternative ways customers solve the same job. For an OTA, that's airline direct booking / Google Flights / corporate travel managers. For an LLM platform, in-house model fine-tuning or off-the-shelf SaaS.
 - url field: include a homepage URL only if you're reasonably confident it exists. If unsure, leave the url field as an empty string. Do not invent URLs.
 - Do NOT include {project_name} itself.
@@ -194,13 +194,13 @@ def llm_competitor_discovery(
         portfolio_block=portfolio_block,
     )
 
-    # Provider: Groq primary (free, fast), Claude fallback. Same chain as
+    # Provider: NVIDIA primary (free, fast), NVIDIA fallback. Same chain as
     # report synthesis post-v0.18.1.
     raw = ""
     try:
-        from utils import groq_client
-        if groq_client.is_available():
-            raw = groq_client.synthesize(
+        from utils import nvidia_client
+        if nvidia_client.is_available():
+            raw = nvidia_client.synthesize(
                 prompt=prompt,
                 max_tokens=2000,
                 system=(
@@ -211,18 +211,18 @@ def llm_competitor_discovery(
                 ),
             )
     except Exception as exc:
-        logger.warning(f"[llm_search] Groq path failed: {exc}")
+        logger.warning(f"[llm_search] NVIDIA path failed: {exc}")
 
     if not raw:
         try:
-            from utils.claude_client import ask
+            from utils.nvidia_client import ask
             raw = ask(
                 prompt=prompt,
                 max_tokens=2000,
                 system="You are a senior industry analyst. Return only valid JSON.",
             )
         except Exception as exc:
-            logger.error(f"[llm_search] Claude fallback also failed: {exc}")
+            logger.error(f"[llm_search] NVIDIA fallback also failed: {exc}")
             return CompetitorDiscovery(raw_response=str(exc))
 
     parsed = _parse_response(raw)

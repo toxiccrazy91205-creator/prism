@@ -88,7 +88,7 @@ classifyOneReport: async (projectId: number, file: File) => {
   ```
   Processing 12 of 30 · openai-10K-2024.pdf
   ████████░░░░░░░░░░░  40%
-  Last matched: Anthropic Q3-2024 → Anthropic ✓
+  Last matched: NVIDIA Q3-2024 → NVIDIA ✓
   ```
 - After loop: render the same manifest UI (matched/unmatched/failed sections)
 - Trigger Industry Pulse refresh when done (existing path)

@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from agent.base_autonomous_agent import AutonomousAgent
 from agent.knowledge_store import KnowledgeStore
 from tools.web_research import WebResearcher
-from utils.claude_client import ask, ask_vision
+from utils.nvidia_client import ask, ask_vision
 from webapp.api.models import KnowledgeEntity, Project, WorkItem
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class UXIntelAgent(AutonomousAgent):
         ]
 
     def generate_next_work(self) -> list[dict]:
-        """Use Claude to reason about what flows haven't been mapped yet."""
+        """Use NVIDIA to reason about what flows haven't been mapped yet."""
         summary = self.knowledge.get_knowledge_summary()
 
         # Gather known flows
@@ -171,7 +171,7 @@ Return ONLY the JSON array, no other text."""
             if isinstance(items, list) and len(items) > 0:
                 return items
         except (json.JSONDecodeError, IndexError, Exception) as exc:
-            logger.warning("Failed to parse Claude's work suggestions: %s", exc)
+            logger.warning("Failed to parse NVIDIA's work suggestions: %s", exc)
 
         # Fallback: generate sensible defaults
         fallback: list[dict] = []
@@ -200,7 +200,7 @@ Return ONLY the JSON array, no other text."""
         return fallback
 
     def get_tools(self) -> list[dict]:
-        """Return Anthropic-format tool schemas for the tool-use loop."""
+        """Return NVIDIA-format tool schemas for the tool-use loop."""
         return [
             {
                 "name": "take_screenshot",
@@ -405,7 +405,7 @@ Return ONLY the JSON array, no other text."""
         ]
 
     def get_system_prompt(self) -> str:
-        """Return the system prompt for the Claude tool-use loop."""
+        """Return the system prompt for the NVIDIA tool-use loop."""
         summary = self.knowledge.get_knowledge_summary()
         return (
             f'You are a UX Intelligence Analyst agent. Your job is to '

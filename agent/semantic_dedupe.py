@@ -6,7 +6,7 @@ Flow inside knowledge_store.upsert_entity:
   3. **embedding cosine match ≥0.90 → merge; band 0.78..0.90 → LLM tie-breaker**  (this module)
   4. insert fresh
 
-Everything here is graceful: if Gemini embeddings are unavailable or the
+Everything here is graceful: if NVIDIA embeddings are unavailable or the
 entity has no prior embedding to compare against, the caller falls through
 to insert as if this layer didn't exist. No crashes on provider exhaustion.
 
@@ -110,11 +110,11 @@ def find_best_match(
       - AMBIGUOUS_LO ≤ score < AUTO_MERGE_THRESHOLD → run LLM tie-breaker
       - score < AMBIGUOUS_LO → fall through to insert
     """
-    from utils import gemini_embeddings
+    from utils import nvidia_embeddings
 
-    if not gemini_embeddings.is_available():
+    if not nvidia_embeddings.is_available():
         return None
-    vec = gemini_embeddings.embed(text)
+    vec = nvidia_embeddings.embed(text)
     if vec is None:
         return None
 
@@ -170,7 +170,7 @@ def store_new_embedding(db: Session, entity_id: int) -> bool:
     if _LAST_COMPUTED_VEC is None:
         return False
     _store_embedding(
-        db, entity_id, _LAST_COMPUTED_TEXT, _LAST_COMPUTED_VEC, model="gemini-text-embedding-004",
+        db, entity_id, _LAST_COMPUTED_TEXT, _LAST_COMPUTED_VEC, model="NVIDIA-text-embedding-004",
     )
     return True
 
@@ -182,7 +182,7 @@ def llm_tie_breaker(name_a: str, desc_a: str, name_b: str, desc_b: str) -> bool:
     (safer to insert than merge) on any failure so an outage never auto-merges
     distinct concepts.
     """
-    from utils import claude_client
+    from utils import nvidia_client
 
     prompt = (
         "Two knowledge-graph entities are up for merge. Decide if they refer "
@@ -195,7 +195,7 @@ def llm_tie_breaker(name_a: str, desc_a: str, name_b: str, desc_b: str) -> bool:
         "Reply with EXACTLY one token: SAME or DIFFERENT."
     )
     try:
-        resp = claude_client.ask_fast(prompt, max_tokens=5)
+        resp = nvidia_client.ask_fast(prompt, max_tokens=5)
         decision = (resp or "").strip().upper().split()[0] if resp else ""
         return decision == "SAME"
     except Exception as exc:

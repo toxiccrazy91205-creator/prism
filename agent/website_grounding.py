@@ -11,10 +11,10 @@ in South Africa, and so on. The result was 50+ "effect" entities about
 mining deficits, fuel cells, and Helmholtz researchers — all derived
 from search drift.
 
-A "simple Claude/ChatGPT query" the user noted as a comparison works
-because Claude's web tooling reads the URL FIRST and grounds everything
+A "simple NVIDIA/ChatGPT query" the user noted as a comparison works
+because NVIDIA's web tooling reads the URL FIRST and grounds everything
 on what the company actually does. This module gives the agent the same
-discipline: fetch the homepage once per session, ask Claude to extract a
+discipline: fetch the homepage once per session, ask NVIDIA to extract a
 structured portfolio summary (products, services, target market, what it
 ISN'T), and feed THAT into every downstream prompt.
 
@@ -65,7 +65,7 @@ If the page content is empty/blocked/irrelevant, return the literal string "GROU
 
 @lru_cache(maxsize=32)
 def _cached_summary(url: str, project_name: str) -> str | None:
-    """Cached one-shot fetch + Claude extraction. lru_cache key is (url, project_name).
+    """Cached one-shot fetch + NVIDIA extraction. lru_cache key is (url, project_name).
 
     Returns None on any failure — callers should treat that as "no grounding
     available" and fall back to the user-typed description.
@@ -87,7 +87,7 @@ def _cached_summary(url: str, project_name: str) -> str | None:
             logger.warning(f"[website_grounding] {fetch_url} returned <200 chars; skipping")
             return None
 
-        from utils.claude_client import ask
+        from utils.nvidia_client import ask
         summary = ask(
             _PROMPT.format(project_name=project_name, page_content=content),
             max_tokens=800,

@@ -3,10 +3,10 @@
 Why this exists:
 The autonomous agent fires bursts of LLM calls (multiple work items in a
 session, sometimes multiple sessions concurrently). Each provider's free
-tier has tight RPM caps — Gemini 15 RPM, Groq 30 RPM — so a burst of 10
+tier has tight RPM caps — NVIDIA 15 RPM, NVIDIA 30 RPM — so a burst of 10
 calls in 4s reliably lands 6+ in the same minute window and gets 429'd.
-v0.15.4 added a Claude → Gemini → Groq cascade, but live UAT showed
-Groq itself only succeeding on 26% of calls (5 OK / 19 total) under
+v0.15.4 added a NVIDIA → NVIDIA → NVIDIA cascade, but live UAT showed
+NVIDIA itself only succeeding on 26% of calls (5 OK / 19 total) under
 burst load. The cascade can't save calls when all providers are throttled
 at once.
 
@@ -17,7 +17,7 @@ This module gives each provider:
      (process-local; honest under-cap RPM).
 
 Both gates are module-globals and acquire-block, so any thread calling
-through `throttle("gemini")` will queue politely behind the others.
+through `throttle("NVIDIA")` will queue politely behind the others.
 This trades latency (calls now take 4s+ to start instead of 0s) for
 deterministic 0% 429 rate under expected load.
 
@@ -35,11 +35,10 @@ logger = logging.getLogger(__name__)
 
 # (max_concurrent, min_seconds_between_calls)
 # min_seconds is just under the inverse of the documented free-tier RPM:
-#   gemini 15 RPM → 60/15 = 4s exactly. We use 4.5s to leave headroom.
-#   groq   30 RPM → 60/30 = 2s exactly. We use 2.5s.
+#   NVIDIA 15 RPM → 60/15 = 4s exactly. We use 4.5s to leave headroom.
+#   NVIDIA   30 RPM → 60/30 = 2s exactly. We use 2.5s.
 _LIMITS: dict[str, tuple[int, float]] = {
-    "gemini": (2, 4.5),
-    "groq":   (2, 2.5),
+    "nvidia": (5, 0.5), # NVIDIA NIM has higher concurrency/RPM than other free tiers
 }
 
 # Module-global state, one entry per provider.
@@ -63,7 +62,7 @@ def throttle(provider: str):
     """Wrap an LLM HTTP call so it respects the per-provider rate limit.
 
     Usage:
-        with throttle("gemini"):
+        with throttle("NVIDIA"):
             httpx.post(...)
 
     Blocks until both (a) the concurrency semaphore is acquired and

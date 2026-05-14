@@ -80,7 +80,7 @@ class ScreenUpdate(BaseModel):
 
 
 class ScreenAnalysisResult(BaseModel):
-    """One screen's Claude analysis output."""
+    """One screen's NVIDIA analysis output."""
     name: str
     display_name: str
     purpose: str

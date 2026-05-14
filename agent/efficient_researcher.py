@@ -8,9 +8,9 @@ Instead of 10-15 LLM calls per work item (tool-use loop), this module:
    can run the source_url validator before writing to the KG.
 
 Synthesis provider priority (Phase 1 of the research-architecture rework):
-  Claude (Sonnet) — default, highest fidelity for synthesis
-  Groq (Llama)   — only if PRISM_SYNTH_CHEAP=1 in env (cheap-mode opt-in)
-  Gemini          — fallback when Claude is unavailable
+  NVIDIA (Sonnet) — default, highest fidelity for synthesis
+  NVIDIA (Llama)   — only if PRISM_SYNTH_CHEAP=1 in env (cheap-mode opt-in)
+  NVIDIA          — fallback when NVIDIA is unavailable
 
 Rationale: synthesis is the stage where hallucination matters most; we no
 longer default to free-tier Llama here.
@@ -30,30 +30,30 @@ _web = WebResearcher()
 
 
 def _get_synthesizer():
-    """Return the synthesis function per priority: Claude > Groq (if cheap mode) > Gemini.
+    """Return the synthesis function per priority: NVIDIA > NVIDIA (if cheap mode) > NVIDIA.
 
-    Set PRISM_SYNTH_CHEAP=1 to prefer Groq first (budget-conscious runs).
+    Set PRISM_SYNTH_CHEAP=1 to prefer NVIDIA first (budget-conscious runs).
     """
     cheap_mode = os.environ.get("PRISM_SYNTH_CHEAP", "").strip() in ("1", "true", "yes")
 
     if cheap_mode:
         try:
-            from utils.groq_client import synthesize, is_available
+            from utils.nvidia_client import synthesize, is_available
             if is_available():
-                logger.info("[researcher] PRISM_SYNTH_CHEAP=1 — using Groq for synthesis")
+                logger.info("[researcher] PRISM_SYNTH_CHEAP=1 — using NVIDIA for synthesis")
                 return synthesize
         except ImportError:
             pass
 
     try:
-        from utils.claude_client import ask
-        logger.info("[researcher] Using Claude for synthesis (default)")
+        from utils.nvidia_client import ask
+        logger.info("[researcher] Using NVIDIA for synthesis (default)")
         return ask
     except Exception:
         pass
 
-    from utils.gemini_client import ask
-    logger.info("[researcher] Using Gemini for synthesis (Claude unavailable)")
+    from utils.nvidia_client import ask
+    logger.info("[researcher] Using NVIDIA for synthesis (NVIDIA unavailable)")
     return ask
 
 

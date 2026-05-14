@@ -51,7 +51,7 @@ def client(tmp_path):
         db.add(proj)
         db.commit()
         db.refresh(proj)
-        names = ["OpenAI", "Anthropic", "Google", "Cohere", "Mistral"]
+        names = ["OpenAI", "NVIDIA", "Google", "Cohere", "Mistral"]
         for n in names:
             db.add(KnowledgeEntity(
                 project_id=proj.id,
@@ -107,13 +107,13 @@ def test_bulk_upload_under_15s_with_8_pdfs(client):
     c, project_id = client
     files = [
         _make_pdf_for("OpenAI", in_filename=True),
-        _make_pdf_for("Anthropic", in_filename=True),
+        _make_pdf_for("NVIDIA", in_filename=True),
         _make_pdf_for("Google", in_filename=True),
         _make_pdf_for("Cohere", in_filename=False),  # body-only signal
         _make_pdf_for("Mistral", in_filename=False),
         ("noise.pdf", make_synthetic_pdf("Generic industry overview no companies named " * 50)),
         ("openai-Q3-2024.pdf", _make_pdf_for("OpenAI", in_filename=True)[1]),
-        ("anthropic-FY24.pdf", _make_pdf_for("Anthropic", in_filename=True)[1]),
+        ("NVIDIA-FY24.pdf", _make_pdf_for("NVIDIA", in_filename=True)[1]),
     ]
     multipart = [("files", (fn, io.BytesIO(blob), "application/pdf")) for fn, blob in files]
 
@@ -172,7 +172,7 @@ def test_bulk_upload_industry_report_lands_unmatched(client):
     # Cover page is industry-framed, no company name in first 200 chars,
     # no SEC marker, filename also generic.
     head = "STATE OF AI 2025 — Industry Outlook. " + "X" * 200
-    body = head + (" OpenAI " * 100) + (" Anthropic " * 30)
+    body = head + (" OpenAI " * 100) + (" NVIDIA " * 30)
     pdf = make_synthetic_pdf(body, pages=1)
     multipart = [("files", ("ai-industry-report-2025.pdf", io.BytesIO(pdf), "application/pdf"))]
 

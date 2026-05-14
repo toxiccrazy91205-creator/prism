@@ -7,7 +7,7 @@ Operational insights from UAT runs, mistakes, and session audits.
 ## Context Bandwidth Audit — Session 2026-04-09
 
 ### L1: Pre-spawn file reading is the #1 context waste
-**What happened**: Before spawning 3 build agents (self-healing, emulator, Telegram bot), the main session read ~1,900 lines of source files (orchestrator.py, scenario_runner_agent.py, CLAUDE.md, android_device.py, setup_emulator.sh). The spawned agents then re-read the same files themselves.
+**What happened**: Before spawning 3 build agents (self-healing, emulator, Telegram bot), the main session read ~1,900 lines of source files (orchestrator.py, scenario_runner_agent.py, NVIDIA.md, android_device.py, setup_emulator.sh). The spawned agents then re-read the same files themselves.
 
 **Cost**: ~3,800 lines of context consumed for what should have been a single 200-word codebase summary.
 

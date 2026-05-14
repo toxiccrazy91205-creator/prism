@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from agent.base_autonomous_agent import AutonomousAgent
 from tools.web_research import WebResearcher
-from utils.claude_client import ask
+from utils.nvidia_client import ask
 from webapp.api.models import KnowledgeEntity, Project, WorkItem
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ class CompetitiveIntelAgent(AutonomousAgent):
         ]
 
     def generate_next_work(self) -> list[dict]:
-        """Use Claude to reason about knowledge gaps and suggest next work items."""
+        """Use NVIDIA to reason about knowledge gaps and suggest next work items."""
         summary = self.knowledge.get_knowledge_summary()
 
         # Gather existing entities
@@ -138,7 +138,7 @@ Return ONLY a JSON array. Each item:
             if isinstance(items, list) and len(items) > 0:
                 return items
         except (json.JSONDecodeError, IndexError, Exception) as exc:
-            logger.warning("Failed to parse Claude's work suggestions: %s", exc)
+            logger.warning("Failed to parse NVIDIA's work suggestions: %s", exc)
 
         # Fallback: generate sensible defaults
         fallback: list[dict] = []
@@ -161,7 +161,7 @@ Return ONLY a JSON array. Each item:
         return fallback
 
     def get_tools(self) -> list[dict]:
-        """Return Anthropic-format tool schemas for the tool-use loop."""
+        """Return NVIDIA-format tool schemas for the tool-use loop."""
         return [
             {
                 "name": "web_search",
@@ -376,7 +376,7 @@ Return ONLY a JSON array. Each item:
         ]
 
     def get_system_prompt(self) -> str:
-        """Return the system prompt for the Claude tool-use loop."""
+        """Return the system prompt for the NVIDIA tool-use loop."""
         summary = self.knowledge.get_knowledge_summary()
         return (
             f'You are a senior competitive intelligence analyst embedded in the '
@@ -479,7 +479,7 @@ Return ONLY a JSON array. Each item:
         context = item.context_json or {}
 
         # v0.19.0: LLM-as-search for the discovery work-item categories.
-        # User feedback: "if I ask Claude or GPT 'who are the competitors of
+        # User feedback: "if I ask NVIDIA or GPT 'who are the competitors of
         # company XYZ' they answer from training data — why does Prism need
         # a Tavily call?" — right. For named-entity discovery, training data
         # is more accurate than search drift, search-cost-free, and survives
@@ -563,7 +563,7 @@ Return ONLY a JSON array. Each item:
             }
             return self._current_result
 
-        # For all other categories, use efficient research with Groq (free)
+        # For all other categories, use efficient research with NVIDIA (free)
         # instead of the expensive tool-use loop
         logger.info(f"[{self.agent_type}] Efficient research for: {item.category}")
 
@@ -643,7 +643,7 @@ Return ONLY a JSON array. Each item:
     def _llm_discover_competitors(self, item) -> dict:
         """v0.19.0: LLM-as-search path for industry_identification + contrarian_discovery.
 
-        Asks Groq (free, fast) for the competitor list directly from training
+        Asks NVIDIA (free, fast) for the competitor list directly from training
         knowledge — no search-provider call. Each emitted URL gets a HEAD
         check; verified URLs become first-class observations, unverified
         ones are saved with a label so the report knows the citation is
@@ -1024,7 +1024,7 @@ Return ONLY a JSON array. Each item:
                 f"  a) '{self.project_name} competitors' — local/direct rivals\n"
                 f"  b) '{self.project_name} alternatives 2025' — alternatives users consider\n"
                 f"  c) Category-leader queries — search for the GLOBAL leaders in this category. "
-                f"     E.g. for an Indian LLM platform, that's OpenAI, Anthropic, Google Gemini, "
+                f"     E.g. for an Indian LLM platform, that's OpenAI, NVIDIA, Google NVIDIA, "
                 f"     Mistral, Cohere — not just Indian players. For a fintech startup in India, "
                 f"     also include Stripe, Square, PayPal alongside Razorpay. Customers compare "
                 f"     against the global category, not just the local one.\n"

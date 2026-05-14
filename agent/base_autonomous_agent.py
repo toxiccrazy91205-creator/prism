@@ -4,7 +4,7 @@ Autonomous agents differ from session agents (like FlowExplorerAgent):
 - They persist knowledge across sessions via KnowledgeStore
 - They maintain a work queue and self-direct what to investigate next
 - They run in bounded sessions (max items, max duration)
-- They use Claude's tool-use loop for execution, matching the existing pattern
+- They use NVIDIA's tool-use loop for execution, matching the existing pattern
 """
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from agent.knowledge_store import KnowledgeStore
-from utils.claude_client import ask, ask_with_tools
+from utils.nvidia_client import ask, ask_with_tools
 from webapp.api.models import AgentSession, WorkItem
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class AutonomousAgent(ABC):
 
     @abstractmethod
     def generate_next_work(self) -> list[dict]:
-        """Use Claude to reason about knowledge gaps and return new work items.
+        """Use NVIDIA to reason about knowledge gaps and return new work items.
 
         Same dict format as seed_backlog().
         """
@@ -68,7 +68,7 @@ class AutonomousAgent(ABC):
 
     @abstractmethod
     def get_tools(self) -> list[dict]:
-        """Return Anthropic-format tool schemas for the tool-use loop."""
+        """Return NVIDIA-format tool schemas for the tool-use loop."""
         ...
 
     @abstractmethod
@@ -365,10 +365,10 @@ class AutonomousAgent(ABC):
         }
 
     def run_tool_loop(self, prompt: str, max_iterations: int = 20) -> dict:
-        """Run a Claude tool-use loop, matching the FlowExplorerAgent pattern.
+        """Run a NVIDIA tool-use loop, matching the FlowExplorerAgent pattern.
 
-        Sends the prompt to Claude with available tools, processes tool calls
-        iteratively until Claude ends the turn or max_iterations is reached.
+        Sends the prompt to NVIDIA with available tools, processes tool calls
+        iteratively until NVIDIA ends the turn or max_iterations is reached.
 
         Returns:
             Dict with status, final_response, and iterations count.
@@ -399,7 +399,7 @@ class AutonomousAgent(ABC):
                 )
 
             # Append assistant message — convert content blocks to plain dicts
-            # so they're JSON-serializable (needed for Gemini _FakeBlock objects)
+            # so they're JSON-serializable (needed for NVIDIA _FakeBlock objects)
             serializable_content = []
             for block in response.content:
                 if hasattr(block, "type"):
@@ -412,7 +412,7 @@ class AutonomousAgent(ABC):
                             "name": block.name,
                             "input": block.input,
                         }
-                        # Preserve Gemini thought_signature for round-trip
+                        # Preserve NVIDIA thought_signature for round-trip
                         if hasattr(block, "thought_signature") and block.thought_signature:
                             entry["thought_signature"] = block.thought_signature
                         serializable_content.append(entry)

@@ -57,9 +57,9 @@ def generate(
     if project is None:
         raise HTTPException(404, f"Project {project_id} not found")
 
-    fmts = [f.strip() for f in formats.split(",") if f.strip() in ("pdf", "xlsx")]
+    fmts = [f.strip() for f in formats.split(",") if f.strip() in ("pdf", "xlsx", "html")]
     if not fmts:
-        raise HTTPException(400, f"formats must include pdf or xlsx; got {formats!r}")
+        raise HTTPException(400, f"formats must include pdf, xlsx, or html; got {formats!r}")
 
     job_id = uuid.uuid4().hex
     job = JobState(
@@ -136,13 +136,16 @@ def download(
 
     Re-renders from the cached manifest — no LLM cost, no DB writes.
     """
-    if format not in ("pdf", "xlsx"):
-        raise HTTPException(400, f"format must be pdf or xlsx, got {format!r}")
+    if format not in ("pdf", "xlsx", "html"):
+        raise HTTPException(400, f"format must be pdf, xlsx, or html, got {format!r}")
 
     try:
         binary = render_from_manifest(db, artifact_id, fmt=format)
     except ValueError as exc:
         raise HTTPException(404, str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(400, str(exc))
+
 
     artifact = db.get(KnowledgeArtifact, artifact_id)
     project_name = "report"
@@ -156,6 +159,9 @@ def download(
     if format == "pdf":
         filename = f"{project_name}_executive_report_{date_stamp}.pdf"
         media_type = "application/pdf"
+    elif format == "html":
+        filename = f"{project_name}_executive_report_{date_stamp}.html"
+        media_type = "text/html"
     else:
         filename = f"{project_name}_data_{date_stamp}.xlsx"
         media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

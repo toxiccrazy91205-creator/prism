@@ -58,9 +58,9 @@ def test_verify_url_rejects_empty_or_non_http():
 
 # ---- end-to-end with mocked LLM ----
 
-def test_llm_discovery_with_mocked_groq():
-    """Full happy path: Groq returns structured JSON; verifier fakes URL checks."""
-    fake_groq_response = """{
+def test_llm_discovery_with_mocked_NVIDIA():
+    """Full happy path: NVIDIA returns structured JSON; verifier fakes URL checks."""
+    fake_NVIDIA_response = """{
       "direct_local": [
         {"name": "LocalCo", "differentiator": "Indian rival", "url": "https://localco.example"}
       ],
@@ -71,8 +71,8 @@ def test_llm_discovery_with_mocked_groq():
         {"name": "AltCo", "differentiator": "alternative way", "url": ""}
       ]
     }"""
-    with patch("utils.groq_client.is_available", return_value=True), \
-         patch("utils.groq_client.synthesize", return_value=fake_groq_response), \
+    with patch("utils.nvidia_client.is_available", return_value=True), \
+         patch("utils.nvidia_client.synthesize", return_value=fake_NVIDIA_response), \
          patch("agent.llm_search._verify_url", return_value=True):
         d = llm_competitor_discovery(
             project_name="TestCo",
@@ -96,8 +96,8 @@ def test_llm_discovery_with_mocked_groq():
 def test_llm_discovery_with_failing_url_verification():
     """When verifier returns False, status='unverified' (not dropped)."""
     fake_response = '{"direct_local":[{"name":"X","differentiator":"y","url":"https://nope.example"}],"direct_global":[],"indirect":[]}'
-    with patch("utils.groq_client.is_available", return_value=True), \
-         patch("utils.groq_client.synthesize", return_value=fake_response), \
+    with patch("utils.nvidia_client.is_available", return_value=True), \
+         patch("utils.nvidia_client.synthesize", return_value=fake_response), \
          patch("agent.llm_search._verify_url", return_value=False):
         d = llm_competitor_discovery("TestCo", "desc")
     # Entity is still kept — url_status flags the citation as training-data only
@@ -106,9 +106,9 @@ def test_llm_discovery_with_failing_url_verification():
 
 
 def test_llm_discovery_empty_response_degrades_gracefully():
-    with patch("utils.groq_client.is_available", return_value=True), \
-         patch("utils.groq_client.synthesize", return_value=""), \
-         patch("utils.claude_client.ask", return_value=""):
+    with patch("utils.nvidia_client.is_available", return_value=True), \
+         patch("utils.nvidia_client.synthesize", return_value=""), \
+         patch("utils.nvidia_client.ask", return_value=""):
         d = llm_competitor_discovery("TestCo", "desc")
     assert d.direct_local == []
     assert d.direct_global == []
@@ -118,8 +118,8 @@ def test_llm_discovery_empty_response_degrades_gracefully():
 def test_llm_discovery_skips_unnamed_entries():
     """Defensive: empty `name` in a list item is silently dropped, not raised."""
     fake = '{"direct_local":[{"name":"","differentiator":"","url":""},{"name":"RealCo","differentiator":"d","url":""}],"direct_global":[],"indirect":[]}'
-    with patch("utils.groq_client.is_available", return_value=True), \
-         patch("utils.groq_client.synthesize", return_value=fake), \
+    with patch("utils.nvidia_client.is_available", return_value=True), \
+         patch("utils.nvidia_client.synthesize", return_value=fake), \
          patch("agent.llm_search._verify_url", return_value=True):
         d = llm_competitor_discovery("TestCo", "desc")
     # Only RealCo survives
@@ -130,8 +130,8 @@ def test_llm_discovery_skips_unnamed_entries():
 def test_llm_discovery_handles_non_list_categories():
     """If LLM returns a category as a non-list (drift), don't raise."""
     fake = '{"direct_local":"this should be a list","direct_global":[{"name":"OK","differentiator":"d","url":""}],"indirect":[]}'
-    with patch("utils.groq_client.is_available", return_value=True), \
-         patch("utils.groq_client.synthesize", return_value=fake), \
+    with patch("utils.nvidia_client.is_available", return_value=True), \
+         patch("utils.nvidia_client.synthesize", return_value=fake), \
          patch("agent.llm_search._verify_url", return_value=True):
         d = llm_competitor_discovery("TestCo", "desc")
     assert d.direct_local == []

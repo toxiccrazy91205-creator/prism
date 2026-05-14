@@ -25,7 +25,7 @@
   - **`ThreadPoolExecutor(max_workers=3)` with `as_completed()` drain pattern** — DB writes on main thread per-future as it resolves (must-fix #2)
   - **Per-future try/except** so one bad PDF doesn't poison the batch (must-fix #4)
   - **Soft-deadline 25s**; remaining files cancel and land in `deferred` array, NOT `failed` (must-fix #3)
-  - **`_synth_one_detached`** writes a stub artifact with `error` field on Groq failure instead of silent log (must-fix #4)
+  - **`_synth_one_detached`** writes a stub artifact with `error` field on NVIDIA failure instead of silent log (must-fix #4)
   - DB pool sizing documented (5+10=15 capacity vs 7 max load) — no change needed
   - `content_md[:200_000]` vs synthesis `MAX_TEXT_CHARS=60_000` divergence documented inline (should-fix #9)
   - DoD: TASK-4 integration test passes; new endpoint tests for malformed-PDF and deadline-deferred behavior also pass

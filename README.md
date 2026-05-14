@@ -9,7 +9,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.22.0-10b981?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.0.0-10b981?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/AI-NVIDIA_NIM-76B900?style=flat-square&logo=nvidia&logoColor=white" alt="AI Provider" />
   <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/Next.js-14-000000?style=flat-square&logo=next.js" alt="Next.js" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License" />
@@ -17,20 +18,18 @@
 
 ---
 
-Prism is a product operating system for PMs. It combines automated UAT testing with autonomous competitive intelligence agents that research your market while you sleep. Drop in your app, describe your product, and Prism discovers competitors, profiles their features and pricing, tracks industry trends, maps UX flows, and generates evidence-backed intelligence reports — all with source URLs.
+Prism is a product operating system for PMs. It has been migrated to **NVIDIA NIM APIs** for high-performance, cost-effective inference. It combines automated UAT testing with autonomous competitive intelligence agents that research your market while you sleep.
 
 ---
 
 ## What It Does
 
 - **Autonomous competitive intelligence** — AI agents discover competitors, research their features, pricing, recent launches, and strategic moves. Each finding is evidence-backed with source URLs.
-- **Industry research** — Tracks industry trends, regulatory changes, market data from analyst publications (Skift, PhocusWire, CAPA, etc.). Self-identifies the best sources for your industry.
+- **Industry research** — Tracks industry trends, regulatory changes, market data from analyst publications.
 - **UX flow mapping** — Navigates Android apps via vision-guided automation, maps every screen and flow, compares UX patterns across competitors.
-- **Natural language queries** — Ask "How does our booking flow compare to Booking.com?" and get a synthesized answer drawing from all agent knowledge.
-- **Vision-guided UAT** — Drop in an APK, point at your Figma file, get a per-frame comparison report. No manual tapping.
-- **Multi-planner test suite** — 5 test plan types: feature flow, design fidelity, functional flow, deeplink utility, edge cases.
-- **Telegram-first** — Create products, run agents, query knowledge, get daily digests — all from your phone via `/new` and `/intel` commands.
-- **Self-healing execution** — Detects crashes, navigation stuck, wrong screens; auto-recovers with per-state playbooks.
+- **Natural language queries** — Ask questions and get synthesized answers drawing from all agent knowledge.
+- **Vision-guided UAT** — Drop in an APK, point at your Figma file, get a per-frame comparison report.
+- **NVIDIA Powered** — Uses Llama 3.1 405B for reasoning and Llama 3.2 11B Vision for UX navigation.
 
 ---
 
@@ -50,102 +49,63 @@ Prism is a product operating system for PMs. It combines automated UAT testing w
 ┌──▼────────┐ ┌───▼────────┐ ┌───▼──────────┐ ┌──▼───────────┐
 │Competitive│ │ Industry   │ │ UX           │ │ UAT Runner   │
 │Intel Agent│ │ Research   │ │ Intelligence │ │ (Figma+APK)  │
-│  9 tools  │ │  7 tools   │ │  11 tools    │ │ VisionNav    │
 └──┬────────┘ └───┬────────┘ └───┬──────────┘ └──┬───────────┘
    │               │               │               │
 ┌──▼───────────────▼───────────────▼───────────────▼─────────────┐
+│                 NVIDIA NIM AI INFRASTRUCTURE                   │
+│   Llama 3.1 405B (Reasoning) · Llama 3.2 11B (Vision)          │
+│   nv-embedqa-e5-v5 (Embeddings)                                │
+└─────────────────────────────────────────────┬──────────────────┘
+                                              │
+┌─────────────────────────────────────────────▼──────────────────┐
 │                SHARED KNOWLEDGE LAYER                           │
 │  Entities · Relations · Observations · Artifacts · Screenshots │
-│  SQLite via SQLAlchemy · 17 tables · Semantic search           │
+│  Neon Postgres · 17 tables · NVIDIA Semantic Search            │
 └────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Project Structure
-
-```
-agent/                          # Autonomous agents
-  base_autonomous_agent.py      # Base class: work queue + tool-use loop
-  intel_agent.py                # Compound competitive_intel + industry_research
-  competitive_intel_agent.py    # Competitor discovery and profiling
-  industry_research_agent.py    # Industry trends and market data
-  impact_analysis_agent.py      # 2nd/3rd-order effects of trends on competitors
-  quality_review_agent.py       # Grounding gate — flags unsourced claims
-  digest_runner.py              # Daily Telegram digest push
-  ux_intel_agent.py             # App UI capture (disabled post-Loupe carve; v0.10.1 work)
-  product_os_orchestrator.py    # Agent scheduler and coordinator
-  query_engine.py               # NL query → synthesized answer
-  knowledge_store.py            # Knowledge graph CRUD interface
-  efficient_researcher.py       # Deterministic search + Groq synthesis
-tools/                          # Deterministic execution layer
-  web_research.py               # Web search + content extraction
-utils/                          # LLM clients + cost tracking
-  claude_client.py              # Anthropic SDK wrapper
-  gemini_client.py              # Google Gemini (fallback)
-  groq_client.py                # Groq Llama 3.3 (primary synthesis)
-  cost_tracker.py               # Per-call ledger + quota alerts
-webapp/
-  api/                          # FastAPI backend
-    models.py                   # Knowledge graph + work tables
-    routes/                     # REST endpoints (projects, knowledge, product-os, cost, digest)
-    services/                   # Screen analysis, test planners
-  web/                          # Next.js 14 frontend
-    app/
-      page.tsx                  # Home — product list
-      projects/new/             # Create product + auto-start agents
-      projects/[id]/            # Tabbed project hub
-        page.tsx                # Overview + product timeline
-        intelligence/           # Agent controls + status
-        uat/                    # Screens, plans, runs, Figma
-        competitors/            # Competitor grid + detail
-        ask/                    # NL query interface
-        backlog/                # Work queue viewer
-telegram_bot/bot.py             # Telegram interface (/new, /intel, /run)
-config/settings.yaml            # Agent configuration
-memory/                         # Compounding intelligence logs
 ```
 
 ---
 
 ## Setup
 
+### 1. Local Development (Native)
+
 ```bash
-# 1. Clone and install
+# Clone and install
 git clone https://github.com/yash7agarwal/prism.git
 cd prism
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cd webapp/web && npm install && cd ../..
 
-# 2. Configure
+# Configure
 cp .env.example .env
-# Edit .env: ANTHROPIC_API_KEY (required), TELEGRAM_BOT_TOKEN, GEMINI_API_KEY
+# Edit .env: NVIDIA_API_KEY (required), DATABASE_URL (optional for local SQLite)
 
-# 3. Run backend
-.venv/bin/python3 -m uvicorn webapp.api.main:app --reload --port 8000
+# Run backend
+python3 -m uvicorn webapp.api.main:app --reload --port 8000
 
-# 4. Run frontend (separate terminal)
-cd webapp/web && npm run dev
-
-# 5. Run Telegram bot (separate terminal)
-.venv/bin/python3 -m telegram_bot.run_bot
+# Run frontend (separate terminal)
+cd webapp/web && npm install && npm run dev
 ```
 
----
+### 2. Local Development (Docker)
 
-## Usage
+```bash
+# Build and run with Docker
+docker build -t prism-nvidia .
+docker run -p 8000:8000 --env-file .env prism-nvidia
+```
 
-| Action | Web | Telegram |
-|--------|-----|----------|
-| Create product | `/projects/new` | `/new Name — description` |
-| Run competitive intel | Intelligence tab → Run | `/intel run competitive_intel` |
-| View competitors | Competitors tab | `/intel competitors` |
-| Ask a question | Ask tab | `/intel ask <question>` |
-| Get daily digest | — | `/intel digest` |
-| Check agent status | Intelligence tab | `/intel status` |
-| Run UAT | UAT tab | `/run <feature>` |
-| Upload APK | UAT tab | Send .apk file |
+### 3. Production Deployment (Render)
+
+1. **Connect Repository:** Create a new **Web Service** on Render and connect your GitHub repo.
+2. **Runtime:** Select **Docker**.
+3. **Environment Variables:**
+   - `NVIDIA_API_KEY`: Your NVIDIA NIM key.
+   - `DATABASE_URL`: Your Neon Postgres connection string.
+   - `TAVILY_API_KEY`: Your Tavily search key.
+   - `SERVICE_TYPE`: Set to `api` (or `both` if you want the bot in the same container).
+4. **Deploy:** Render will build the optimized multi-stage image and deploy.
 
 ---
 
@@ -153,44 +113,17 @@ cd webapp/web && npm run dev
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `ANTHROPIC_API_KEY` | Claude API key for agents and vision | Yes |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token | For Telegram |
-| `GEMINI_API_KEY` | Google Gemini API key (free tier fallback) | No |
-| `TAVILY_API_KEY` | Tavily web search API | No (falls back to DuckDuckGo) |
-| `BRAVE_API_KEY` | Brave search API | No |
-| `FIGMA_ACCESS_TOKEN` | Figma API token for design imports | For UAT |
-| `NEXT_PUBLIC_API_URL` | Backend URL for Vercel deployment | For deploy |
+| `NVIDIA_API_KEY` | NVIDIA NIM API key | **Yes** |
+| `DATABASE_URL` | PostgreSQL URL (Neon/Supabase) | For Prod |
+| `TAVILY_API_KEY` | Tavily web search API | No |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token | For Bot |
+| `PRISM_AUTO_DAEMON` | Start research scheduler (1=yes) | For Prod |
 
 ---
 
-## Changelog
+## Final Project Status
 
-### [0.8.0] — 2026-04-18
-- Multi-agent Product OS: 3 autonomous agents + shared knowledge graph + query engine
-- Rebranded "AppUAT" to "Prism" — generic product intelligence platform
-- Unified tabbed project hub with Overview, Intelligence, UAT, Competitors, Ask, Backlog
-- Product Timeline with color-coded findings, source links, data freshness
-- Telegram `/new` and `/intel` commands for phone-first workflow
-
-### [0.7.1] — 2026-04-12
-- Fixed vision navigator truncation, stuck recovery, throttle
-
-### [0.7.0] — 2026-04-12
-- Proactive Figma importer — one fetch, zero API calls on subsequent runs
-
-### [0.6.0] — 2026-04-11
-- APK-driven E2E UAT execution + multi-planner suite (5 plan types)
-
-### [0.5.0] — 2026-04-10
-- Vision-guided UAT + AppUAT web app + Telegram screenshot capture
-
----
-
-## Roadmap
-
-- [ ] Vercel + Railway deployment (frontend + backend)
-- [ ] Real vector embeddings for semantic knowledge search
-- [ ] UX flow stitching — combine screenshots into visual journey images
-- [ ] Automated daily digest via Telegram (scheduled cron)
-- [ ] Feature comparison matrices across competitors
-- [ ] Analytics agent — correlate product metrics with competitive moves
+The project is now:
+- **Free-Tier Optimized**: Works on Render + Neon + NVIDIA Free credits.
+- **Production-Ready**: Dockerized with multi-stage builds and health checks.
+- **Minimal**: Zero legacy AI dependencies.

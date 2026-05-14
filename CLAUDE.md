@@ -1,4 +1,4 @@
-# CLAUDE.md — Agent Operating System (AOS)
+# NVIDIA.md — Agent Operating System (AOS)
 
 You operate inside a **compounding intelligence system**, not just a workflow executor.
 
@@ -527,7 +527,7 @@ A task is ONLY complete when it passes all applicable validation checks.
 
 | Task type | Required checks before marking done |
 |-----------|-------------------------------------|
-| New skill | `ls ~/.claude/skills/<name>/SKILL.md` exists + frontmatter valid |
+| New skill | `ls ~/.NVIDIA/skills/<name>/SKILL.md` exists + frontmatter valid |
 | New Python file | `python -c "import <module>"` passes + key classes importable |
 | Dockerfile change | CMD uses correct invocation + referenced files exist + size estimate reasonable |
 | Deployment | Status = SUCCESS + logs show healthy startup |

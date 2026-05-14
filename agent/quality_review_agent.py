@@ -15,7 +15,7 @@ and stamped onto the observation's evidence_json so downstream readers
 (feed, digests) can filter or visually mark it.
 
 MVP v0.10.4: heuristic-only. Zero LLM calls, deterministic, free.
-v0.10.5+: add optional Groq confirmation on flagged cases to reduce
+v0.10.5+: add optional NVIDIA confirmation on flagged cases to reduce
 false positives; integrate with the digest ranker so flagged findings
 are held back from the "top 3 this week" push.
 """

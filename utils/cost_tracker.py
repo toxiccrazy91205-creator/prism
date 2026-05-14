@@ -1,6 +1,6 @@
 """Cost tracker — persist every external-API call so we can watch spend.
 
-Every call to Groq / Claude / Gemini / Tavily should land one row in
+Every call to NVIDIA / NVIDIA / NVIDIA / Tavily should land one row in
 `cost_ledger`. The API endpoint at `/api/cost/summary` reads this ledger
 and produces per-provider, per-day/month rollups.
 
@@ -21,22 +21,17 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Per-token USD rates (rough; update as pricing shifts).
-# Groq Llama 3.3 is free but we track usage for quota management.
+# NVIDIA Llama 3.3 is free but we track usage for quota management.
 _RATES: dict[str, dict[str, float]] = {
-    "claude": {"in": 3.0 / 1_000_000, "out": 15.0 / 1_000_000},
-    "gemini": {"in": 0.0, "out": 0.0},  # free tier
-    "groq":   {"in": 0.0, "out": 0.0},  # free tier
+    "nvidia": {"in": 0.0, "out": 0.0},  # Free credits/tier tracking
     "tavily": {"search": 0.0},          # free tier
 }
 
 # Quotas — keep these conservative so warnings fire early.
 # Keys are provider, values are (metric, window_days, limit).
 _QUOTAS: dict[str, tuple[str, int, int]] = {
-    "groq":   ("calls", 1, 14_400),
-    "gemini": ("calls", 1, 1_500),
+    "nvidia": ("calls", 1, 1000),       # Conservative daily call limit for free tier
     "tavily": ("search_count", 30, 1_000),
-    # Claude is pay-as-you-go; no hard quota, but alert at $10/day rolling.
-    "claude": ("cost", 1, 10),
 }
 _WARN_THRESHOLD = 0.80  # fire the warning at 80% of quota
 

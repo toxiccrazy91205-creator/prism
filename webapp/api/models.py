@@ -2,7 +2,7 @@
 
 Five tables:
 - Project: an app being mapped (e.g., "MakeMyTrip")
-- Screen: a captured/uploaded mobile screen with Claude-extracted metadata
+- Screen: a captured/uploaded mobile screen with NVIDIA-extracted metadata
 - Edge: a directed transition between two screens
 - TestPlan: a UAT plan generated from a feature description
 - TestCase: an individual test case within a plan
@@ -296,7 +296,7 @@ class WorkItem(Base):
 
 
 class CostLedger(Base):
-    """One row per external API call — LLM (Groq/Claude/Gemini) or search (Tavily).
+    """One row per external API call — LLM (NVIDIA/NVIDIA/NVIDIA) or search (Tavily).
 
     Powers /api/cost/summary and the quota-alert warning system. Fail-silent
     writes from `utils.cost_tracker.record`; if writing a row errors, agents
@@ -309,7 +309,7 @@ class CostLedger(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     recorded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    # groq | claude | gemini | tavily
+    # NVIDIA | NVIDIA | NVIDIA | tavily
     provider: Mapped[str] = mapped_column(String(20), nullable=False)
     # synthesis | vision | search | tool_use | unknown
     call_type: Mapped[str] = mapped_column(String(20), default="unknown")

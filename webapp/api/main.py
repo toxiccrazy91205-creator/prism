@@ -18,6 +18,7 @@ if str(_REPO_ROOT) not in sys.path:
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from webapp.api.db import init_db
 from webapp.api.routes import cost, digest, edges, knowledge, plans, prd, product_os, projects, reports, screens, xproj
@@ -158,3 +159,15 @@ def on_startup() -> None:
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+# v0.22.0: Serve frontend static files. 
+# Mounted LAST so that API routers take precedence.
+_WEB_OUT = _REPO_ROOT / "webapp" / "web" / "out"
+if _WEB_OUT.exists():
+    app.mount("/", StaticFiles(directory=str(_WEB_OUT), html=True), name="frontend")
+else:
+    logging.getLogger(__name__).warning(
+        f"Frontend build not found at {_WEB_OUT}. "
+        "Dashboard will not be served by this process."
+    )

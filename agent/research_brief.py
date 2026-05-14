@@ -53,7 +53,7 @@ class ResearchBrief:
     project_description: str
     app_package: str | None
 
-    # Portfolio summary extracted from the project's homepage (one Claude
+    # Portfolio summary extracted from the project's homepage (one NVIDIA
     # call cached at process scope). Anchors EVERY downstream prompt on
     # what the company actually does, instead of letting keyword-only
     # queries drift into adjacent meanings (the "Platinum Industries the

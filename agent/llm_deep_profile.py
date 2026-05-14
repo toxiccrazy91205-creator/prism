@@ -15,8 +15,8 @@ What this does:
   category. Caller persists each Fact as a KnowledgeObservation, which
   pushes the competitor into the 5+ findings band → 100%.
 
-Cost: 1 prompt-gen call + N fact-extract calls (default N=10). All Groq
-free-tier; falls back to Claude only if Groq is dry. Per-competitor cost
+Cost: 1 prompt-gen call + N fact-extract calls (default N=10). All NVIDIA
+free-tier; falls back to NVIDIA only if NVIDIA is dry. Per-competitor cost
 in cents on the paid path.
 """
 from __future__ import annotations
@@ -166,7 +166,7 @@ def generate_probing_prompts(
 ) -> list[ProbingPrompt]:
     """Ask the LLM to write project-specific probing questions about a competitor.
 
-    Falls back from Groq → Claude. Returns a list of ProbingPrompt; empty list on failure.
+    Falls back from NVIDIA → NVIDIA. Returns a list of ProbingPrompt; empty list on failure.
     """
     prompt = _PROMPT_GENERATION_TEMPLATE.format(
         competitor=competitor,
@@ -290,22 +290,22 @@ def deep_profile_competitor(
 
 
 # ---------------------------------------------------------------------------
-# LLM dispatch — Groq primary, Claude fallback. Mirrors agent.llm_search.
+# LLM dispatch — NVIDIA primary, NVIDIA fallback. Mirrors agent.llm_search.
 # ---------------------------------------------------------------------------
 
 
 def _call_llm(prompt: str) -> str:
-    """Try Groq first; fall back to Claude on any failure. Return text or ''."""
+    """Try NVIDIA first; fall back to NVIDIA on any failure. Return text or ''."""
     try:
-        from utils import groq_client
-        if groq_client.is_available():
-            return groq_client.synthesize(prompt, max_tokens=2048)
+        from utils import nvidia_client
+        if nvidia_client.is_available():
+            return nvidia_client.synthesize(prompt, max_tokens=2048)
     except Exception as exc:
-        logger.warning("[deep_profile] Groq call failed: %s — falling back to Claude", exc)
+        logger.warning("[deep_profile] NVIDIA call failed: %s — falling back to NVIDIA", exc)
 
     try:
-        from utils import claude_client
-        return claude_client.ask(prompt, max_tokens=2048)
+        from utils import nvidia_client
+        return nvidia_client.ask(prompt, max_tokens=2048)
     except Exception as exc:
-        logger.error("[deep_profile] Claude fallback also failed: %s", exc)
+        logger.error("[deep_profile] NVIDIA fallback also failed: %s", exc)
         return ""

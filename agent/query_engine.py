@@ -13,7 +13,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from agent.knowledge_store import KnowledgeStore
-from utils.claude_client import ask, ask_fast
+from utils.nvidia_client import ask, ask_fast
 from webapp.api.models import (
     KnowledgeArtifact,
     KnowledgeEntity,
@@ -275,7 +275,7 @@ class QueryEngine:
             for s in context["screenshots"]
         ]
 
-        # Override freshness with calculated value if not provided by Claude
+        # Override freshness with calculated value if not provided by NVIDIA
         if not parsed.get("data_freshness"):
             parsed["data_freshness"] = self._calculate_freshness(context)
 
@@ -332,7 +332,7 @@ class QueryEngine:
             return f"Last updated {days} {unit} ago"
 
     def _parse_json_response(self, raw: str) -> dict:
-        """Parse JSON from Claude's response, handling markdown fences."""
+        """Parse JSON from NVIDIA's response, handling markdown fences."""
         text = raw.strip()
         # Strip markdown code fences if present
         if text.startswith("```"):
@@ -345,7 +345,7 @@ class QueryEngine:
         try:
             return json.loads(text)
         except json.JSONDecodeError:
-            logger.warning("Failed to parse Claude response as JSON, using raw text")
+            logger.warning("Failed to parse NVIDIA response as JSON, using raw text")
             return {
                 "answer": raw.strip(),
                 "confidence": 0.5,

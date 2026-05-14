@@ -80,7 +80,7 @@ def test_parse_period_returns_none_when_no_year():
 def test_filename_match_substring_high_score():
     competitors = [
         {"id": 1, "name": "OpenAI", "canonical_name": "openai"},
-        {"id": 2, "name": "Anthropic", "canonical_name": "anthropic"},
+        {"id": 2, "name": "NVIDIA", "canonical_name": "NVIDIA"},
     ]
     m = brc.filename_match("openai-10K-2024.pdf", competitors)
     assert m is not None
@@ -104,7 +104,7 @@ def test_filename_match_picks_higher_overlap_when_two_match():
 def test_filename_match_no_match_returns_none():
     competitors = [
         {"id": 1, "name": "OpenAI", "canonical_name": "openai"},
-        {"id": 2, "name": "Anthropic", "canonical_name": "anthropic"},
+        {"id": 2, "name": "NVIDIA", "canonical_name": "NVIDIA"},
     ]
     m = brc.filename_match("random-industry-report.pdf", competitors)
     assert m is None
@@ -123,7 +123,7 @@ def test_filename_match_skips_short_canonical_names():
 
 
 def test_llm_classify_returns_null_when_llm_says_null():
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     fake = json.dumps({
         "matched_entity_id": None,
         "confidence": "high",
@@ -137,7 +137,7 @@ def test_llm_classify_returns_null_when_llm_says_null():
 
 def test_llm_classify_rejects_id_not_in_competitor_list():
     """Hallucination guard: LLM picks an id that doesn't exist → we treat as None."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     fake = json.dumps({
         "matched_entity_id": 999,
         "confidence": "high",
@@ -222,10 +222,10 @@ def test_body_text_match_clear_winner_with_filename_cosignal():
     """OpenAI 10-K with 'openai' in filename + dominant body counts → match."""
     competitors = [
         {"id": 1, "name": "OpenAI"},
-        {"id": 2, "name": "Anthropic"},
+        {"id": 2, "name": "NVIDIA"},
         {"id": 3, "name": "Google"},
     ]
-    body = ("OpenAI Inc. annual report. " * 100) + ("Anthropic " * 5) + ("Google " * 3)
+    body = ("OpenAI Inc. annual report. " * 100) + ("NVIDIA " * 5) + ("Google " * 3)
     out = brc.body_text_match(body, "openai-10K-2024.pdf", competitors)
     assert out is not None
     assert out[0] == 1
@@ -234,9 +234,9 @@ def test_body_text_match_clear_winner_with_filename_cosignal():
 
 def test_body_text_match_clear_winner_with_cover_page_cosignal():
     """No filename match, but 'OpenAI' appears in first 200 chars (cover page)."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     head = "OpenAI Inc. — Annual Report 2024. "  # 35 chars; well under 200
-    body = head + ("OpenAI " * 50) + ("Anthropic " * 5)
+    body = head + ("OpenAI " * 50) + ("NVIDIA " * 5)
     out = brc.body_text_match(body, "report.pdf", competitors)
     assert out is not None
     assert out[0] == 1
@@ -247,11 +247,11 @@ def test_body_text_match_clear_winner_with_10k_marker():
     competitor name appear in the first 2000 chars (authentic 10-K cover
     page). v0.21.4 review must-fix #5 tightened from "marker proximity"
     to "marker+name both in cover region" to reject industry reports."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     # Pad first 200 chars with neutral text (no name), then put the SEC
     # marker + name BOTH within the first 2000 chars of body (cover region).
     pad = "X" * 220
-    body = pad + " UNITED STATES SECURITIES AND EXCHANGE COMMISSION FORM 10-K of OpenAI Inc. " + ("OpenAI " * 50) + ("Anthropic " * 3)
+    body = pad + " UNITED STATES SECURITIES AND EXCHANGE COMMISSION FORM 10-K of OpenAI Inc. " + ("OpenAI " * 50) + ("NVIDIA " * 3)
     out = brc.body_text_match(body, "filing.pdf", competitors)
     assert out is not None
     assert out[0] == 1
@@ -262,13 +262,13 @@ def test_body_text_match_industry_report_with_sec_marker_deep_returns_none():
     deep in body (after char 2000) must NOT pass the co-signal gate just
     because marker + name are both in body. Authentic filings put them on
     the cover page."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     # Cover page (first 2000 chars): pure industry framing, no name, no SEC marker.
     cover = "STATE OF AI INDUSTRY 2025 — Annual Outlook on Generative AI Vendors. " + "X" * 2000
     assert len(cover) >= 2000
     # Deep in body (after 2000 chars): SEC marker mentioned in passing + name
     # — exactly the failure mode the prior 500-char proximity gate let through.
-    deep = " Below we summarize the FORM 10-K of OpenAI Inc. and others. " + ("OpenAI " * 100) + ("Anthropic " * 25)
+    deep = " Below we summarize the FORM 10-K of OpenAI Inc. and others. " + ("OpenAI " * 100) + ("NVIDIA " * 25)
     body = cover + deep
     out = brc.body_text_match(body, "industry-2025.pdf", competitors)
     assert out is None, "industry report with SEC marker only deep in body must NOT auto-match"
@@ -280,13 +280,13 @@ def test_body_text_match_industry_report_returns_none():
     Without this gate, we'd misattribute the report to OpenAI."""
     competitors = [
         {"id": 1, "name": "OpenAI"},
-        {"id": 2, "name": "Anthropic"},
+        {"id": 2, "name": "NVIDIA"},
         {"id": 3, "name": "Google"},
     ]
     # First 200 chars: generic industry framing — no company name.
     head = "STATE OF AI 2025 — Industry Outlook. This report covers leading providers in foundation models and their commercial trajectories. " + "X" * 80
     assert len(head) > 200, "head must exceed cover-page window for a fair test"
-    body = head + ("OpenAI " * 100) + ("Anthropic " * 30) + ("Google " * 25)
+    body = head + ("OpenAI " * 100) + ("NVIDIA " * 30) + ("Google " * 25)
     # Filename also has no co-signal
     out = brc.body_text_match(body, "ai-industry-report-2025.pdf", competitors)
     assert out is None, "Industry report with dominance but no co-signal must NOT auto-match"
@@ -294,8 +294,8 @@ def test_body_text_match_industry_report_returns_none():
 
 def test_body_text_match_ambiguous_returns_none():
     """Two competitors mentioned ~equally → dominance fails, returns None."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
-    body = "OpenAI Inc. annual. " + ("OpenAI " * 30) + ("Anthropic " * 25)
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
+    body = "OpenAI Inc. annual. " + ("OpenAI " * 30) + ("NVIDIA " * 25)
     out = brc.body_text_match(body, "openai.pdf", competitors)
     # Even with cover-page co-signal, the dominance ratio (30/25 = 1.2×)
     # falls under 3× — must be None.
@@ -348,11 +348,11 @@ def test_classify_uses_body_text_when_filename_misses():
     """Filename has no signal, body has dominant + co-signal → matches via body_text_count."""
     competitors = [
         {"id": 1, "name": "OpenAI", "canonical_name": "openai"},
-        {"id": 2, "name": "Anthropic", "canonical_name": "anthropic"},
+        {"id": 2, "name": "NVIDIA", "canonical_name": "NVIDIA"},
     ]
     # Filename "Y2025.pdf" doesn't mention any competitor (the real-world Booking case).
     # But body cover page + dominance gives clear OpenAI win.
-    body = "OpenAI Inc. — Annual Report 2025. " + ("OpenAI " * 80) + ("Anthropic " * 5)
+    body = "OpenAI Inc. — Annual Report 2025. " + ("OpenAI " * 80) + ("NVIDIA " * 5)
     with patch.object(brc, "llm_classify") as llm_mock:
         result = brc.classify("Y2025.pdf", body, competitors)
     assert result.matched_entity_id == 1
@@ -362,7 +362,7 @@ def test_classify_uses_body_text_when_filename_misses():
 
 def test_classify_skips_llm_when_allow_llm_false():
     """With allow_llm=False (default), an unresolvable case returns None — no LLM."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     body = "Some industry report mentioning everyone equally."  # ambiguous
     with patch.object(brc, "llm_classify") as llm_mock:
         result = brc.classify("report.pdf", body, competitors)  # default allow_llm=False
@@ -372,8 +372,8 @@ def test_classify_skips_llm_when_allow_llm_false():
 
 def test_classify_industry_report_returns_none_via_classify():
     """Integration check for must-fix #1 at the classify() level."""
-    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "Anthropic"}]
+    competitors = [{"id": 1, "name": "OpenAI"}, {"id": 2, "name": "NVIDIA"}]
     head = "STATE OF AI 2025 — Industry Outlook. " + "X" * 200
-    body = head + ("OpenAI " * 100) + ("Anthropic " * 30)
+    body = head + ("OpenAI " * 100) + ("NVIDIA " * 30)
     result = brc.classify("ai-industry-2025.pdf", body, competitors, allow_llm=False)
     assert result.matched_entity_id is None, "classify() must reject industry reports lacking co-signal"

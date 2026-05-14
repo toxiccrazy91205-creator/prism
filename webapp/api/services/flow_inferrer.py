@@ -1,10 +1,10 @@
 """Flow inferrer — given all analyzed screens for a project, propose edges between them.
 
-The user uploads screenshots in any order. This service uses Claude to reason about
+The user uploads screenshots in any order. This service uses NVIDIA to reason about
 which screens are connected, identify the home/entry screen, and detect branches
 (e.g., "By Night" vs "By Hour" funnels).
 
-Reuses utils.claude_client.ask (text-only) — much cheaper than vision since we already
+Reuses utils.nvidia_client.ask (text-only) — much cheaper than vision since we already
 extracted screen metadata in the per-screen analysis pass.
 """
 from __future__ import annotations
@@ -13,7 +13,7 @@ import json
 import logging
 import re
 
-from utils.claude_client import DEFAULT_MODEL, ask
+from utils.nvidia_client import DEFAULT_MODEL, ask
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,7 @@ def infer_flow(screens: list[dict]) -> dict:
     if not screens:
         return {"home_screen_id": None, "proposed_edges": [], "branches": []}
 
-    # Build a compact summary to send to Claude — strip screenshot paths, etc.
+    # Build a compact summary to send to NVIDIA — strip screenshot paths, etc.
     # Include context_hints — this is the screen analyzer's guess about where
     # the screen came from (e.g., "Has back arrow + hotel name in title bar —
     # likely came from a hotel listing"). It's a strong signal for inferrer.

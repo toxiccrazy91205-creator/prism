@@ -1,7 +1,7 @@
 """Screen routes — bulk upload, list, edit, delete, flow inference.
 
 Bulk upload: PMs drag-drop multiple screenshots at once. Each is analyzed
-independently with Claude vision in parallel. After upload, the user can
+independently with NVIDIA vision in parallel. After upload, the user can
 trigger flow inference to propose edges.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["screens"])
 
-# Thread pool for parallel Claude vision calls (network-bound, releases GIL)
+# Thread pool for parallel NVIDIA vision calls (network-bound, releases GIL)
 _EXECUTOR = ThreadPoolExecutor(max_workers=6)
 
 
@@ -52,7 +52,7 @@ async def upload_screens_bulk(
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
 ):
-    """Upload multiple screenshots at once. Each is analyzed in parallel by Claude."""
+    """Upload multiple screenshots at once. Each is analyzed in parallel by NVIDIA."""
     project = db.get(models.Project, project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -185,7 +185,7 @@ def update_screen(
 
 @router.post("/api/screens/{screen_id}/reanalyze", response_model=schemas.ScreenOut)
 def reanalyze_screen(screen_id: int, db: Session = Depends(get_db)):
-    """Re-run Claude vision analysis on an existing screen.
+    """Re-run NVIDIA vision analysis on an existing screen.
 
     Useful after fixing the analyzer (e.g., adding JPG support) — re-analyzes
     the screen using its already-saved file on disk. No re-upload needed.
@@ -268,7 +268,7 @@ def delete_screen(screen_id: int, db: Session = Depends(get_db)):
     response_model=schemas.FlowInferenceResult,
 )
 def infer_project_flow(project_id: int, db: Session = Depends(get_db)):
-    """Run flow inference: ask Claude to propose edges between all uploaded screens.
+    """Run flow inference: ask NVIDIA to propose edges between all uploaded screens.
 
     Returns proposed edges (with confidence + reasoning) for the user to review.
     The edges are NOT auto-saved — the user must accept them.
@@ -299,7 +299,7 @@ def infer_project_flow(project_id: int, db: Session = Depends(get_db)):
     ]
     result = infer_flow(screens_data)
 
-    # Validate that screen ids exist (Claude might hallucinate)
+    # Validate that screen ids exist (NVIDIA might hallucinate)
     valid_ids = {s.id for s in screens}
     proposed_edges = [
         schemas.InferredEdge(**e)

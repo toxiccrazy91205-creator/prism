@@ -24,14 +24,14 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
 from agent.research_brief import ResearchBrief
-from utils import claude_client
+from utils import nvidia_client
 from webapp.api.models import KnowledgeArtifact
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-PLANNER_MODEL = "claude-haiku-4-5-20251001"
+PLANNER_MODEL = "NVIDIA-haiku-4-5-20251001"
 PLAN_ARTIFACT_TYPE = "research_plan"
 DEFAULT_TTL_HOURS = 24
 
@@ -181,7 +181,7 @@ def _find_cached_plan(
 
 
 def _call_planner(brief: ResearchBrief) -> tuple[str, list[PlannedQuery]]:
-    """Route through claude_client.ask_with_tools so Claude→Gemini fallback is automatic.
+    """Route through nvidia_client.ask_with_tools so NVIDIA→NVIDIA fallback is automatic.
 
     NOTE: prompt caching is deferred — ask_with_tools doesn't expose cache_control
     markers today. Re-enable once a cacheable variant exists, or when raw SDK
@@ -198,7 +198,7 @@ def _call_planner(brief: ResearchBrief) -> tuple[str, list[PlannedQuery]]:
         "specific to this subject's domain."
     )
 
-    resp = claude_client.ask_with_tools(
+    resp = nvidia_client.ask_with_tools(
         messages=[{"role": "user", "content": user_prompt}],
         tools=[PLAN_TOOL_SCHEMA],
         system=system_prompt,

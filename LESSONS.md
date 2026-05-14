@@ -14,10 +14,10 @@
 | 2026-04-10-12 | v0.4-0.7.1 | Vision navigation, Figma UAT, web app, self-healing |
 | 2026-04-16 | v0.8.0 | **Pivot**: UAT tool → Product Intelligence OS with multi-agent system |
 | 2026-04-17 | v0.8.1 | Unified platform, "Prism" rebrand, Telegram /new command |
-| 2026-04-18 | v0.9.0 | Lenses, Impact Engine, Trends, Groq integration, efficiency rewrite |
+| 2026-04-18 | v0.9.0 | Lenses, Impact Engine, Trends, NVIDIA integration, efficiency rewrite |
 | 2026-04-19 | v0.10.0 | **Pivot**: UAT carved into sibling repo Loupe |
 | 2026-04-19 | v0.10.1–0.10.5 | DB hardening, cost telemetry, merged intel agent, quality review, digest push |
-| 2026-04-20 | v0.11.0 | **Pivot**: Hardcoded research seeds → typed brief + LLM-planned queries; Claude Sonnet becomes synthesis default |
+| 2026-04-20 | v0.11.0 | **Pivot**: Hardcoded research seeds → typed brief + LLM-planned queries; NVIDIA Sonnet becomes synthesis default |
 | 2026-04-20 | v0.12.x | F2 quality-regression alert · F3 purge-and-rerun · competitor obs-leak fix · Railway deploy prep |
 | 2026-04-20 | v0.13.0 | **Phase 2 + 3 complete**: decay, source authority, embedding dedupe, cross-project queue, RSS/Reddit, trends feedback UI |
 | 2026-04-20 | v0.13.1–.3 | Railway deploy live: Dockerfile reshape, SERVICE_TYPE dispatch, python-multipart hotfix |
@@ -56,7 +56,7 @@ Transform from a UAT tool into a Product Operating System with autonomous agents
 
 **Why SQLite, not Postgres?** Single-user PM tool. SQLite with brute-force vector search is sufficient for <100K embeddings. No ops overhead. Can always migrate later.
 
-**Why tool-use loop pattern?** Each agent defines tools (Anthropic format), and Claude drives a loop: call tool → execute → feed result back → call next tool. This matched the existing FlowExplorerAgent pattern from the UAT system. Reuse > rebuild.
+**Why tool-use loop pattern?** Each agent defines tools (NVIDIA format), and NVIDIA drives a loop: call tool → execute → feed result back → call next tool. This matched the existing FlowExplorerAgent pattern from the UAT system. Reuse > rebuild.
 
 **Why a shared knowledge graph?** All agents need to read each other's findings. Competitive intel discovers a competitor → industry research checks if they're disrupting → impact analysis traces the cascade. Separate databases would silo the intelligence.
 
@@ -68,17 +68,17 @@ Transform from a UAT tool into a Product Operating System with autonomous agents
 ## Chapter 3: The API Cost Crisis (April 17-18)
 
 ### What happened
-The Anthropic API key hit its billing limit mid-session. Agents started failing silently — work items marked "failed" with "credit balance too low" errors. Then:
+The NVIDIA API key hit its billing limit mid-session. Agents started failing silently — work items marked "failed" with "credit balance too low" errors. Then:
 
-1. **First response: Add Gemini as fallback.** Built `gemini_client.ask_with_tools()` that converts Anthropic tool schemas to Gemini format and returns compatible response objects. The `claude_client.ask_with_tools()` catches billing errors and auto-routes to Gemini.
+1. **First response: Add NVIDIA as fallback.** Built `nvidia_client.ask_with_tools()` that converts NVIDIA tool schemas to NVIDIA format and returns compatible response objects. The `nvidia_client.ask_with_tools()` catches billing errors and auto-routes to NVIDIA.
 
-2. **Gemini also failed.** Free tier is 15 RPM / 1500 RPD. The agent's tool-use loop makes 10-15 API calls per work item, burning through quota in minutes. Also hit a schema issue: Gemini requires `items` field for ARRAY type parameters — our converter didn't handle that. Fixed.
+2. **NVIDIA also failed.** Free tier is 15 RPM / 1500 RPD. The agent's tool-use loop makes 10-15 API calls per work item, burning through quota in minutes. Also hit a schema issue: NVIDIA requires `items` field for ARRAY type parameters — our converter didn't handle that. Fixed.
 
-3. **Gemini thought_signature requirement.** In April 2026, Gemini started requiring `thoughtSignature` in function call round-trips. Our converter dropped it, causing 400 errors. Fixed by capturing it in `_FakeBlock`, preserving through serialization, and re-attaching in the message converter.
+3. **NVIDIA thought_signature requirement.** In April 2026, NVIDIA started requiring `thoughtSignature` in function call round-trips. Our converter dropped it, causing 400 errors. Fixed by capturing it in `_FakeBlock`, preserving through serialization, and re-attaching in the message converter.
 
-4. **Both APIs exhausted simultaneously.** Claude out of credits, Gemini rate-limited. System completely stuck.
+4. **Both APIs exhausted simultaneously.** NVIDIA out of credits, NVIDIA rate-limited. System completely stuck.
 
-### The fundamental fix: Groq + efficient research
+### The fundamental fix: NVIDIA + efficient research
 Instead of making the agents cheaper at the API level, restructured the entire agent execution model:
 
 **Before:** Tool-use loop (10-15 LLM calls per work item)
@@ -100,7 +100,7 @@ ONE LLM call: "Here's all raw data. Extract findings."
 Save findings to knowledge graph
 ```
 
-Cost reduction: $0.30-0.50/item → $0.00/item (Groq free tier: Llama 3.3 70B, 14,400 RPD).
+Cost reduction: $0.30-0.50/item → $0.00/item (NVIDIA free tier: Llama 3.3 70B, 14,400 RPD).
 
 ### Why DuckDuckGo, and why it broke
 The web research tool (`tools/web_research.py`) has a provider cascade: Tavily → Brave → DuckDuckGo. Tavily and Brave require API keys. DuckDuckGo lite is the free fallback — it scrapes `lite.duckduckgo.com/lite/` with regex parsing.
@@ -113,13 +113,13 @@ The web research tool (`tools/web_research.py`) has a provider cascade: Tavily �
 
 ### Key lessons
 
-1. **Free tiers have hidden limits.** DuckDuckGo doesn't document rate limits — it just stops responding. Gemini's free tier seems generous (14,400 RPD) until you realize the agent burns through it in 3 sessions.
+1. **Free tiers have hidden limits.** DuckDuckGo doesn't document rate limits — it just stops responding. NVIDIA's free tier seems generous (14,400 RPD) until you realize the agent burns through it in 3 sessions.
 
 2. **Reduce LLM calls, don't just switch providers.** The real fix wasn't "use a cheaper API" — it was "restructure so you need 90% fewer calls." The efficient researcher pattern is provider-agnostic.
 
 3. **Always have a paid fallback.** Free tiers are for development. Production needs at least one paid provider (Tavily at $0 for 1000/mo is essentially free for a PM tool).
 
-4. **Provider cascade is essential.** `Groq > Claude > Gemini` for LLM. `Tavily > Brave > DuckDuckGo` for search. If any one fails, the next picks up automatically.
+4. **Provider cascade is essential.** `NVIDIA > NVIDIA > NVIDIA` for LLM. `Tavily > Brave > DuckDuckGo` for search. If any one fails, the next picks up automatically.
 
 ---
 
@@ -224,11 +224,11 @@ Version numbers appeared in: VERSION file, README badge, banner image, package.j
 - [ ] Vercel deployment not yet configured for production
 
 ### Resolved
-- [x] FakeBlock serialization error (Gemini round-trip)
-- [x] Gemini thought_signature requirement
-- [x] ARRAY items in Gemini schema conversion
+- [x] FakeBlock serialization error (NVIDIA round-trip)
+- [x] NVIDIA thought_signature requirement
+- [x] ARRAY items in NVIDIA schema conversion
 - [x] DuckDuckGo rate limiting (→ Tavily)
-- [x] Claude billing limit (→ Groq free tier)
+- [x] NVIDIA billing limit (→ NVIDIA free tier)
 - [x] runningAgent stale state bug
 - [x] .next cache corruption
 - [x] Duplicate entities (ixigo, Yatra)
@@ -242,14 +242,14 @@ Version numbers appeared in: VERSION file, README badge, banner image, package.j
 
 | Layer | Primary (Free) | Fallback 1 | Fallback 2 |
 |-------|----------------|------------|------------|
-| LLM Synthesis | Groq (Llama 3.3 70B) | Claude Sonnet | Gemini Flash |
+| LLM Synthesis | NVIDIA (Llama 3.3 70B) | NVIDIA Sonnet | NVIDIA Flash |
 | Web Search | Tavily (1000/mo free) | Brave Search | DuckDuckGo |
-| Tool-use Loop | Groq via efficient_researcher | Claude ask_with_tools | Gemini ask_with_tools |
+| Tool-use Loop | NVIDIA via efficient_researcher | NVIDIA ask_with_tools | NVIDIA ask_with_tools |
 
 ### Why this stack
-- **Groq**: Free, fast (300 tok/s), good enough for synthesis. 14,400 RPD means ~100 competitor profiles/day at zero cost.
+- **NVIDIA**: Free, fast (300 tok/s), good enough for synthesis. 14,400 RPD means ~100 competitor profiles/day at zero cost.
 - **Tavily**: Free tier (1000 searches/mo), returns rich snippets, reliable. Enough for a PM running agents a few times a day.
-- **Claude**: Best quality but costs money. Reserved for complex synthesis when Groq produces low-quality results.
+- **NVIDIA**: Best quality but costs money. Reserved for complex synthesis when NVIDIA produces low-quality results.
 - **DuckDuckGo**: Free fallback for search, but rate-limits at scale. Don't rely on it for production.
 
 ---
@@ -259,16 +259,16 @@ Version numbers appeared in: VERSION file, README badge, banner image, package.j
 Every significant decision and its cost. This is the section a PM reads to understand what was gained AND lost at each pivot.
 
 ### 1. Tool-use loop → Efficient researcher (April 18)
-**Decision:** Replaced Claude/Gemini tool-use loop (10-15 LLM calls/item) with deterministic search + single Groq synthesis (1-2 calls/item).
-- **Gained:** 90% cost reduction ($0.30 → $0.00/item), 14,400 free RPD, no dependency on Claude/Gemini tool-use format, faster execution (20s vs 7min per item)
-- **Lost:** Agent can no longer "think on its feet" — the tool-use loop let Claude reason about what to search next based on what it found. The efficient researcher follows a predetermined search plan. If the 6 preset queries miss something, it won't discover it. Also lost: Claude's superior reasoning quality on ambiguous data.
-- **Net:** Worth it for scale. The fixed search queries cover 90% of cases. For the 10% that need creative exploration, we could add a "deep dive" mode that uses the tool-use loop with Claude on-demand.
+**Decision:** Replaced NVIDIA/NVIDIA tool-use loop (10-15 LLM calls/item) with deterministic search + single NVIDIA synthesis (1-2 calls/item).
+- **Gained:** 90% cost reduction ($0.30 → $0.00/item), 14,400 free RPD, no dependency on NVIDIA/NVIDIA tool-use format, faster execution (20s vs 7min per item)
+- **Lost:** Agent can no longer "think on its feet" — the tool-use loop let NVIDIA reason about what to search next based on what it found. The efficient researcher follows a predetermined search plan. If the 6 preset queries miss something, it won't discover it. Also lost: NVIDIA's superior reasoning quality on ambiguous data.
+- **Net:** Worth it for scale. The fixed search queries cover 90% of cases. For the 10% that need creative exploration, we could add a "deep dive" mode that uses the tool-use loop with NVIDIA on-demand.
 
-### 2. Claude → Gemini → Groq provider cascade (April 17-18)
-**Decision:** Three-tier LLM provider: Groq primary (free), Claude fallback (quality), Gemini last resort.
+### 2. NVIDIA → NVIDIA → NVIDIA provider cascade (April 17-18)
+**Decision:** Three-tier LLM provider: NVIDIA primary (free), NVIDIA fallback (quality), NVIDIA last resort.
 - **Gained:** Zero operational cost for routine research, automatic failover, no single-provider dependency
-- **Lost:** Quality varies across providers — Groq's Llama 3.3 occasionally produces less structured JSON, misses subtle nuances Claude catches. The cascade means different items may be synthesized by different models, creating inconsistent quality across findings. Debugging is harder — "which model produced this hallucinated number?"
-- **Net:** Essential for a PM tool. A product that costs $50/month in API fees for one user is DOA. Groq handles 85% of synthesis well enough. The quality gap matters most for strategic reports, not routine competitor profiles.
+- **Lost:** Quality varies across providers — NVIDIA's Llama 3.3 occasionally produces less structured JSON, misses subtle nuances NVIDIA catches. The cascade means different items may be synthesized by different models, creating inconsistent quality across findings. Debugging is harder — "which model produced this hallucinated number?"
+- **Net:** Essential for a PM tool. A product that costs $50/month in API fees for one user is DOA. NVIDIA handles 85% of synthesis well enough. The quality gap matters most for strategic reports, not routine competitor profiles.
 
 ### 3. DuckDuckGo → Tavily for web search (April 18)
 **Decision:** Replaced DuckDuckGo HTML scraping with Tavily API as primary search provider.
@@ -336,7 +336,7 @@ A prism refracts light into a spectrum (see broadly). A loupe is the jeweler's m
 
 **Decision 7.1: Carve UAT into Loupe, don't just feature-flag it.**
 - **Gained:** Prism's surface area shrinks dramatically (1000+ LOC deleted from bot.py alone, 4K+ LOC of UAT agent code removed, 7 DB tables dropped from the mental model, 1 tab removed from the UI, Android emulator dropped from the Docker image). Prism's story sharpens: "competitive intelligence platform" without the UAT asterisk. Loupe can evolve on its own cadence without fighting Prism's priorities.
-- **Lost:** No shared runtime. Both repos carry duplicate copies of `utils/` (Claude/Gemini/Groq clients), `webapp/api/db.py`, `webapp/api/models.py` for shared tables (Project, Screen, Edge, TestPlan, TestCase), and 7 shared planner services. If Prism fixes a bug in `claude_client.py`, Loupe doesn't automatically get it. Also lost: `ux_intel_agent` (competitor app UI capture) now has no device tools in Prism — it's defensively disabled until v0.10.1 restores a minimal ADB/vision toolset or we carve ux_intel into Loupe too.
+- **Lost:** No shared runtime. Both repos carry duplicate copies of `utils/` (NVIDIA/NVIDIA/NVIDIA clients), `webapp/api/db.py`, `webapp/api/models.py` for shared tables (Project, Screen, Edge, TestPlan, TestCase), and 7 shared planner services. If Prism fixes a bug in `nvidia_client.py`, Loupe doesn't automatically get it. Also lost: `ux_intel_agent` (competitor app UI capture) now has no device tools in Prism — it's defensively disabled until v0.10.1 restores a minimal ADB/vision toolset or we carve ux_intel into Loupe too.
 - **Net:** Worth it. The duplication cost is manageable for 2 mostly-stable utility files; the clarity gain is permanent. If duplication starts hurting, a third shared `prism-core` pip-installable package is the clean v0.11 move.
 
 **Decision 7.2: Full carve, not minimal carve.**
@@ -433,10 +433,10 @@ Supporting schema changes (via idempotent ALTER TABLE in `db.init_db`, not Alemb
 - **Lost:** One extra LLM call per brief change. At a 24h cache TTL and ~$0.001/plan on Haiku, this is ~$0.03/month per project — trivial, but not zero. Also: quality is now dependent on the planner model guessing the domain from name+description. If a project's description is vague, queries will be vague. Fails gracefully (falls back to name-based queries) but isn't magic.
 - **Net:** Right call. The alternative was maintaining a domain-pack taxonomy (travel, food, fintech, ...) — that's a continuous curation tax AND silently fails for any project outside the taxonomy. LLM-planned queries are the only option that scales.
 
-**Decision 8.3: Synthesis default flipped from Groq Llama 3.3 70B to Claude Sonnet 4.6.**
+**Decision 8.3: Synthesis default flipped from NVIDIA Llama 3.3 70B to NVIDIA Sonnet 4.6.**
 - **Gained:** Higher factual fidelity at the stage where hallucination matters most. Sonnet is measurably better at "only claim what the retrieval bundle supports". Structured JSON output is more reliable. Cost/novelty tradeoffs can now be measured via `quality_score_json.novelty_yield`.
-- **Lost:** Real dollars. Groq was free (14,400 RPD). Sonnet is ~$0.003/synthesis call. At current volume (one industry_research session per project every 6h, ~4 calls/day/project, 3 projects), that's ~$1/month. Budget-conscious runs opt in via `PRISM_SYNTH_CHEAP=1` which restores Groq-first.
-- **Net:** Absolutely right for synthesis. The "compounding intelligence" claim is meaningless if the observations it compounds are hallucinated. The v0.9.1 decision to default to Groq was cost-optimal for *any* synthesis; it was wrong for *this* synthesis. One class of mistake on a Llama call poisons the KG for weeks. The explicit opt-out (`PRISM_SYNTH_CHEAP=1`) preserves the Groq path for bulk classification work where hallucination risk is lower.
+- **Lost:** Real dollars. NVIDIA was free (14,400 RPD). Sonnet is ~$0.003/synthesis call. At current volume (one industry_research session per project every 6h, ~4 calls/day/project, 3 projects), that's ~$1/month. Budget-conscious runs opt in via `PRISM_SYNTH_CHEAP=1` which restores NVIDIA-first.
+- **Net:** Absolutely right for synthesis. The "compounding intelligence" claim is meaningless if the observations it compounds are hallucinated. The v0.9.1 decision to default to NVIDIA was cost-optimal for *any* synthesis; it was wrong for *this* synthesis. One class of mistake on a Llama call poisons the KG for weeks. The explicit opt-out (`PRISM_SYNTH_CHEAP=1`) preserves the NVIDIA path for bulk classification work where hallucination risk is lower.
 
 **Decision 8.4: Deterministic source-URL validator, not an LLM judge.**
 - **Gained:** The cheapest possible hallucination guardrail — zero LLM cost, zero latency, deterministic. Every candidate observation's `source_url` MUST be in the retrieval bundle or it gets dropped with a logged reason. In Swiggy's verification run, 1 of 5 candidates was rejected for citing a URL not in the bundle. No "hope the LLM self-corrects" — the URL either exists or it doesn't.
@@ -459,7 +459,7 @@ Supporting schema changes (via idempotent ALTER TABLE in `db.init_db`, not Alemb
 
 2. Why you'll get buttons on your phone: every time the industry_research agent produces a new high-confidence trend, it lands in Telegram with `[Keep] [Dismiss] [Star]`. Every tap shapes the next run. If you dismiss "BNPL in travel" for MMT, the next plan will not probe that angle. If you star "ONDC travel launch impact", next plan will deepen on it.
 
-3. Why the cost line moved: synthesis now uses Claude Sonnet instead of free Groq Llama. The correctness gain is immediate; the bill difference is ~$1/month at current scale. If you ever need to squeeze budget, set `PRISM_SYNTH_CHEAP=1` in `.env` to flip back.
+3. Why the cost line moved: synthesis now uses NVIDIA Sonnet instead of free NVIDIA Llama. The correctness gain is immediate; the bill difference is ~$1/month at current scale. If you ever need to squeeze budget, set `PRISM_SYNTH_CHEAP=1` in `.env` to flip back.
 
 4. Why this wasn't a small fix: "Swiggy has travel trends" sounds like a one-line patch (swap the hardcoded queries). But the real problem was that *any* project could silently get any other industry's content because the pipeline had no enforced project-context boundary. Fixing only Swiggy would have left the same trap for the next project. What shipped in v0.11.0 makes that trap uninstantiable.
 
@@ -471,11 +471,11 @@ Supporting schema changes (via idempotent ALTER TABLE in `db.init_db`, not Alemb
 
 3. **The feedback loop is load-bearing.** An autonomous agent without a user-signal channel doesn't compound — it just runs. Every decision about "how does the user tell the system what's good" is a first-order product decision, not a polish item.
 
-4. **Prompt caching is an optimization, not a correctness lever.** The plan originally included Claude prompt-caching on the brief system prompt. When Claude credits ran out mid-verification, the planner still had to work — via Gemini, which doesn't support prompt caching. Designing the fallback path to not depend on caching meant the system kept working. Caching was added back as a future optimization, not a must-have.
+4. **Prompt caching is an optimization, not a correctness lever.** The plan originally included NVIDIA prompt-caching on the brief system prompt. When NVIDIA credits ran out mid-verification, the planner still had to work — via NVIDIA, which doesn't support prompt caching. Designing the fallback path to not depend on caching meant the system kept working. Caching was added back as a future optimization, not a must-have.
 
 5. **Schema migrations via idempotent ALTER TABLE beat Alembic for single-user apps.** This project has used `db.init_db()` lightweight migrations since v0.10.1 and added three more columns in v0.11.0 with zero ceremony. Alembic would have meant a new dev dependency, a `migrations/` dir, a `alembic upgrade head` in deployment, and human attention on each schema change. None of that pays off below ~10 engineers.
 
-6. **Side-wins matter — note them.** Two unrelated bugs surfaced while doing this work: (a) `datetime.utcnow()` was serialized without a `Z` suffix, causing all "last ran" timestamps to render 5.5h stale in IST (fixed by a `UTCDatetime` PlainSerializer in Pydantic); (b) `utils/gemini_client.ask_with_tools` schema converter flattened nested-object array items to STRING, silently corrupting any multi-field tool call (fixed by recursive schema conversion). Both were found *because* v0.11.0 was actively exercising the Gemini fallback and the timestamp rendering. Fixing them in the same release was free; deferring would have been a regression trap.
+6. **Side-wins matter — note them.** Two unrelated bugs surfaced while doing this work: (a) `datetime.utcnow()` was serialized without a `Z` suffix, causing all "last ran" timestamps to render 5.5h stale in IST (fixed by a `UTCDatetime` PlainSerializer in Pydantic); (b) `utils/nvidia_client.ask_with_tools` schema converter flattened nested-object array items to STRING, silently corrupting any multi-field tool call (fixed by recursive schema conversion). Both were found *because* v0.11.0 was actively exercising the NVIDIA fallback and the timestamp rendering. Fixing them in the same release was free; deferring would have been a regression trap.
 
 ---
 
@@ -483,13 +483,13 @@ Supporting schema changes (via idempotent ALTER TABLE in `db.init_db`, not Alemb
 
 ### What happened
 
-After v0.11.0 established the research-architecture spine and v0.12.x closed the loop with feedback signals + deploy prep, v0.13.0 shipped all remaining items from `/Users/yash/.claude/plans/polished-hatching-bubble.md` in a single coordinated release. Seven new Python modules, one new DB table, one new config family, frontend parity with the Telegram digest.
+After v0.11.0 established the research-architecture spine and v0.12.x closed the loop with feedback signals + deploy prep, v0.13.0 shipped all remaining items from `/Users/yash/.NVIDIA/plans/polished-hatching-bubble.md` in a single coordinated release. Seven new Python modules, one new DB table, one new config family, frontend parity with the Telegram digest.
 
 ### Tradeoff register
 
-**Decision 9.1: Embedding dedupe via Gemini text-embedding-004, not sentence-transformers.**
-- **Gained:** Zero new heavy dependencies (no PyTorch, no 200 MB local model weights); 768-dim vectors; free tier; already wired through `GEMINI_API_KEY`. Stored as raw float32 bytes in the existing `KnowledgeEmbedding` table — no new schema. Works out of the box on Railway without layer-size explosion.
-- **Lost:** Every entity upsert under active provider incurs a ~200 ms embed round-trip. If Gemini is rate-limited the layer silently no-ops, which means the KG fragments quietly during outages (the trigram layer still catches the obvious cases). Embeddings don't capture pure exact-name polish — "Zepto" vs "Zeppto" (typo) would still trigger the trigram layer, not the embedding layer.
+**Decision 9.1: Embedding dedupe via NVIDIA text-embedding-004, not sentence-transformers.**
+- **Gained:** Zero new heavy dependencies (no PyTorch, no 200 MB local model weights); 768-dim vectors; free tier; already wired through `NVIDIA_API_KEY`. Stored as raw float32 bytes in the existing `KnowledgeEmbedding` table — no new schema. Works out of the box on Railway without layer-size explosion.
+- **Lost:** Every entity upsert under active provider incurs a ~200 ms embed round-trip. If NVIDIA is rate-limited the layer silently no-ops, which means the KG fragments quietly during outages (the trigram layer still catches the obvious cases). Embeddings don't capture pure exact-name polish — "Zepto" vs "Zeppto" (typo) would still trigger the trigram layer, not the embedding layer.
 - **Net:** Right call for a solo-PM tool at ≤1K entities/project. If scale grows past ~10K entities, move to pgvector + cached embeddings to kill both the per-upsert latency and the quota risk. Until then, the graceful fallback is the right default — no upsert ever blocks on a provider.
 
 **Decision 9.2: LLM tie-breaker only in the 0.78–0.90 cosine band.**
@@ -521,10 +521,10 @@ After v0.11.0 established the research-architecture spine and v0.12.x closed the
 
 | Layer | What's there now |
 |---|---|
-| **LLM synthesis** | Claude Sonnet 4.6 default · Gemini Flash Latest fallback · Groq Llama 3.3 70B via `PRISM_SYNTH_CHEAP=1` |
-| **LLM planning** | Claude Haiku 4.5 via `utils.claude_client.ask_with_tools` (Gemini fallback automatic) |
-| **LLM tie-breaker** | Claude Haiku 4.5 via `ask_fast`, gated on cosine band 0.78–0.90 |
-| **Embeddings** | Gemini text-embedding-004 (768 dim, float32 bytes in-DB) · graceful fallback on provider outage |
+| **LLM synthesis** | NVIDIA Sonnet 4.6 default · NVIDIA Flash Latest fallback · NVIDIA Llama 3.3 70B via `PRISM_SYNTH_CHEAP=1` |
+| **LLM planning** | NVIDIA Haiku 4.5 via `utils.nvidia_client.ask_with_tools` (NVIDIA fallback automatic) |
+| **LLM tie-breaker** | NVIDIA Haiku 4.5 via `ask_fast`, gated on cosine band 0.78–0.90 |
+| **Embeddings** | NVIDIA text-embedding-004 (768 dim, float32 bytes in-DB) · graceful fallback on provider outage |
 | **Web retrieval** | Tavily → Brave → DuckDuckGo cascade + `source_authority.yaml` blocklist + tier ranking |
 | **Alt retrieval** | RSS + Reddit behind `PRISM_RETRIEVERS` flag · feed/sub maps in `config/` |
 | **Feedback loop** | Telegram inline buttons (F1) + trends-page buttons (this release) → `KnowledgeEntity.user_signal` → next `ResearchBrief.dismissed_canonicals`/`starred_canonicals` |
@@ -539,9 +539,9 @@ After v0.11.0 established the research-architecture spine and v0.12.x closed the
 
 2. **Feature flags over feature branches.** RSS / Reddit / auto-daemon all landed on main behind env flags rather than waiting for their own release trains. Prod default stays boring; opt-in paths exist for when the user is ready. Zero merge overhead.
 
-3. **Graceful degradation makes provider outages irrelevant to code correctness.** Half this session was spent working under exhausted Claude credits + 429'd Gemini. The embedding layer, the tie-breaker, the digest delivery, the RSS fetch — each no-ops cleanly when its provider is gone. The code path is exercised; the outcome is diminished, not broken. This is worth the extra try/except ceremony.
+3. **Graceful degradation makes provider outages irrelevant to code correctness.** Half this session was spent working under exhausted NVIDIA credits + 429'd NVIDIA. The embedding layer, the tie-breaker, the digest delivery, the RSS fetch — each no-ops cleanly when its provider is gone. The code path is exercised; the outcome is diminished, not broken. This is worth the extra try/except ceremony.
 
-4. **Test via monkey-patch when providers are down.** The embedding-merge hot path was verified by stubbing `gemini_embeddings.embed` to return deterministic vectors. Waiting for Gemini's quota reset would have delayed this release by 12 hours. Monkey-patched tests prove code reachability + logic; live E2E tests prove providers + network + auth.
+4. **Test via monkey-patch when providers are down.** The embedding-merge hot path was verified by stubbing `nvidia_embeddings.embed` to return deterministic vectors. Waiting for NVIDIA's quota reset would have delayed this release by 12 hours. Monkey-patched tests prove code reachability + logic; live E2E tests prove providers + network + auth.
 
 5. **A "completed" roadmap is a temporary state.** Every LESSON in this doc opens up two new ones. v0.13 closes one plan; the next plan's seeds are already here — pattern auto-injection into the planner, per-category decay windows, embedding cache sharing across projects. The discipline is: know what's unfinished, resist shipping it into the same release.
 

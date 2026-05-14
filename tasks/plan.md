@@ -18,7 +18,7 @@
 | `await f.read()` (buffer file) | ~0.5–2s for 50MB | yes |
 | `pypdf.PdfReader(...)` extraction | **5–30s** for a 200-page 10-K | yes |
 | `filename_match()` substring | <1ms | yes (fine) |
-| `llm_classify()` Groq call | **5–15s per ambiguous filename** | yes (this is the killer) |
+| `llm_classify()` NVIDIA call | **5–15s per ambiguous filename** | yes (this is the killer) |
 | DB save artifact | ~50ms | yes (fine) |
 | Synthesis (business profile) | 10–30s per matched competitor | **already detached in v0.21.3** ✓ |
 
@@ -214,7 +214,7 @@ def classify(
 ```python
 classification_strategy: Literal["fast", "thorough"] = Query("fast")
 ```
-Default `"fast"` = no LLM. `"thorough"` = filename → body_text → LLM (uses Groq quota). Future-proof for adding `"ocr"` etc.
+Default `"fast"` = no LLM. `"thorough"` = filename → body_text → LLM (uses NVIDIA quota). Future-proof for adding `"ocr"` etc.
 
 **B. Pre-extraction sanity gate (must-fix #4 — magic-byte check):**
 ```python
@@ -285,7 +285,7 @@ Frontend (TASK-6) shows deferred list with a "Re-upload these N" button.
       continue
   ```
 - **Magic-byte check** — covered above (B)
-- **Groq-down during background synthesis** — `_synth_one_detached` writes a stub `business_history` artifact with `"error": "synthesis_failed_retry"` field instead of silently swallowing
+- **NVIDIA-down during background synthesis** — `_synth_one_detached` writes a stub `business_history` artifact with `"error": "synthesis_failed_retry"` field instead of silently swallowing
 - **DB pool sizing** — current pool is `pool_size=5, max_overflow=10` (db.py:49) → 15 concurrent. Worker pool=3 + synth pool=3 + main=1 = 7 max. Documented as headroom-OK; no change needed
 
 **F. content_md cap reconciliation (should-fix #9):** `content_md=text[:200_000]` for raw-artifact storage stays (allows users to read full text in the UI). Synthesis caps at 60K via `MAX_TEXT_CHARS` in `business_history.py`. Comment added at the artifact-write site explaining the asymmetry.
@@ -402,7 +402,7 @@ Slice A (TASK-1, TASK-2) and Slice B-prep (TASK-3) can run in parallel.
 ## 6. Risks & open questions
 
 1. **`reportlab` for synthetic PDFs** — is it installed? If not, integration test will need a different fixture approach. *Mitigation:* TASK-3 will check at module import time and skip gracefully; we can add `reportlab` to dev-deps if missing.
-2. **Body-text match false positives** — A "Generative AI Industry Report 2025" may mention "OpenAI" 80×, "Anthropic" 40×, "Google" 30×. Top is 2× runner-up → returns None (correct: this is an industry report, not an OpenAI 10-K). Verified by the 3× dominance ratio. *Test in TASK-1.*
+2. **Body-text match false positives** — A "Generative AI Industry Report 2025" may mention "OpenAI" 80×, "NVIDIA" 40×, "Google" 30×. Top is 2× runner-up → returns None (correct: this is an industry report, not an OpenAI 10-K). Verified by the 3× dominance ratio. *Test in TASK-1.*
 3. **DB session in thread pool** — current code uses a single session; thread pool workers cannot share. *Mitigation:* extract+classify in workers (no DB), then sync the DB writes on the main thread.
 4. **Soft-deadline truncation** — if user uploads 30 files and we hit 25s after processing 18, the remaining 12 land as "failed: batch_timeout". User has to retry with a smaller batch. *Acceptable per workspace's "transparent failure" preference.*
 
@@ -427,7 +427,7 @@ Slice A (TASK-1, TASK-2) and Slice B-prep (TASK-3) can run in parallel.
 1. **Body-text dominance + structural co-signal** → TASK-1 contract updated; co-signal gate added; new `test_classify_industry_report_returns_none` test required.
 2. **Thread-pool architecture** → TASK-5 spec rewritten with `as_completed()` drain pattern; latency model corrected from "3×" to "1.5×"; goal revised to 15 PDFs in <15s OR 30 in <30s p99.
 3. **`failed: batch_timeout` → `deferred` bucket** → TASK-5 manifest contract gains `deferred[]` array; TASK-6 frontend shows "Re-upload these N" CTA.
-4. **Failure-mode handlers** → TASK-5 added: magic-byte check, per-future try/except, Groq-down stub artifact, DB pool sizing documented.
+4. **Failure-mode handlers** → TASK-5 added: magic-byte check, per-future try/except, NVIDIA-down stub artifact, DB pool sizing documented.
 
 ### Should-fix items addressed:
 5. `use_llm_disambiguation: bool` → `classification_strategy: Literal["fast", "thorough"]` in TASK-5

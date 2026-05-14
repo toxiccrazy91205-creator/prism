@@ -17,7 +17,7 @@ structured BusinessProfile. The profile is persisted as a KnowledgeArtifact
 of type='business_history' so it shows up in the Reports list and the
 Business section of the competitor detail page.
 
-LLM dispatch: Groq primary (free), Claude fallback. ~1-3 calls per
+LLM dispatch: NVIDIA primary (free), NVIDIA fallback. ~1-3 calls per
 synthesis depending on text size (chunking).
 """
 from __future__ import annotations
@@ -31,7 +31,7 @@ from dataclasses import asdict, dataclass, field
 logger = logging.getLogger(__name__)
 
 # Hard cap so a 300-page filing doesn't blow up our LLM context window.
-# 60K chars ≈ ~15K Llama tokens — fits in a single Groq request with room
+# 60K chars ≈ ~15K Llama tokens — fits in a single NVIDIA request with room
 # for the prompt + structured-output instruction.
 MAX_TEXT_CHARS = 60_000
 
@@ -276,22 +276,22 @@ def synthesize_business_profile(
 
 
 # ---------------------------------------------------------------------------
-# LLM dispatch — Groq primary, Claude fallback. Mirrors agent.llm_search.
+# LLM dispatch — NVIDIA primary, NVIDIA fallback. Mirrors agent.llm_search.
 # ---------------------------------------------------------------------------
 
 
 def _call_llm(prompt: str, max_tokens: int = 2048) -> str:
-    """Try Groq first; fall back to Claude. Return text or ''."""
+    """Try NVIDIA first; fall back to NVIDIA. Return text or ''."""
     try:
-        from utils import groq_client
-        if groq_client.is_available():
-            return groq_client.synthesize(prompt, max_tokens=max_tokens)
+        from utils import nvidia_client
+        if nvidia_client.is_available():
+            return nvidia_client.synthesize(prompt, max_tokens=max_tokens)
     except Exception as exc:
-        logger.warning("[business_history] Groq call failed: %s — falling back to Claude", exc)
+        logger.warning("[business_history] NVIDIA call failed: %s — falling back to NVIDIA", exc)
 
     try:
-        from utils import claude_client
-        return claude_client.ask(prompt, max_tokens=max_tokens)
+        from utils import nvidia_client
+        return nvidia_client.ask(prompt, max_tokens=max_tokens)
     except Exception as exc:
-        logger.error("[business_history] Claude fallback also failed: %s", exc)
+        logger.error("[business_history] NVIDIA fallback also failed: %s", exc)
         return ""

@@ -1071,7 +1071,7 @@ async def upload_annual_report(
     db.commit()
     db.refresh(report_art)
 
-    # Synthesize business profile inline. Single Groq call ~5-10s; saves the
+    # Synthesize business profile inline. Single NVIDIA call ~5-10s; saves the
     # need for a separate worker queue for the v1 surface.
     profile = synthesize_business_profile(
         competitor=entity.name,
@@ -1668,7 +1668,7 @@ async def bulk_upload_reports(
             finally:
                 db_local.close()
 
-        # Cap concurrent synthesis at 3 to avoid Groq rate-limit spikes when
+        # Cap concurrent synthesis at 3 to avoid NVIDIA rate-limit spikes when
         # many competitors land at once. Threads are daemon so they don't
         # block container shutdown if a deploy lands mid-synthesis.
         import threading

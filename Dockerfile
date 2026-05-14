@@ -1,41 +1,60 @@
-# Prism — single image, both services (prism-api + prism-bot).
-#
-# The Railway start command differs per service (RAILWAY_RUN_COMMAND env var):
-#   prism-api: uvicorn webapp.api.main:app --host 0.0.0.0 --port $PORT
-#   prism-bot: python -m telegram_bot.run_bot
-#
-# Build locally:  docker build -t prism .
-# Run API:        docker run -p 8000:8000 --env-file .env prism \
-#                   uvicorn webapp.api.main:app --host 0.0.0.0 --port 8000
-# Run bot:        docker run --env-file .env prism
+# STAGE 1: Build Frontend
+FROM node:20-slim as frontend-builder
+WORKDIR /app/web
+COPY webapp/web/package*.json ./
+RUN npm install
+COPY webapp/web ./
+# Ensure NEXT_PUBLIC_API_URL is empty or points to the same domain 
+# so that the rewrites work correctly in the build
+RUN npm run build
 
+# STAGE 2: Build Backend
+FROM python:3.11-slim as builder
+
+WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
+# STAGE 3: Final Production Image
 FROM python:3.11-slim
 
 WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+ENV PYTHONPATH=/app
+ENV PATH=/root/.local/bin:$PATH
 
-# WeasyPrint (v0.17.0 report generator) needs Pango for HTML→PDF.
-# libpango-1.0-0 + libpangoft2-1.0-0 = ~5MB on Debian slim; everything
-# else (fonts, harfbuzz) comes in as transitive apt deps.
+# WeasyPrint dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpango-1.0-0 libpangoft2-1.0-0 \
-        fonts-liberation \
+    libpango-1.0-0 libpangoft2-1.0-0 \
+    fonts-liberation \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Full deps — covers both API (fastapi/uvicorn/sqlalchemy) and bot
-# (python-telegram-bot/httpx), plus shared anthropic/gemini clients.
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy python dependencies from builder
+COPY --from=builder /root/.local /root/.local
 
+# Copy the whole repo (backend)
 COPY . .
 
-# Writable dirs used at runtime — Railway volume overlays /app/webapp/data.
+# Copy built frontend from Stage 1 into the location expected by main.py
+COPY --from=frontend-builder /app/web/out /app/webapp/web/out
+
+# Writable dirs
 RUN mkdir -p memory .tmp/evidence webapp/data/screenshots
 
-ENV PYTHONPATH=/app
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
-# Service dispatch via env var — each Railway service sets SERVICE_TYPE:
-#   prism-api → SERVICE_TYPE=api  (uvicorn)
-#   prism-bot → SERVICE_TYPE=bot  (telegram polling)
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+
 ENTRYPOINT ["/docker-entrypoint.sh"]

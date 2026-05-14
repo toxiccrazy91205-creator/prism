@@ -31,7 +31,7 @@ def _reset_state(monkeypatch):
 def test_first_call_does_not_wait():
     """The first call through a provider's throttle must not block."""
     t0 = time.monotonic()
-    with rate_limiter.throttle("gemini"):
+    with rate_limiter.throttle("NVIDIA"):
         pass
     elapsed = time.monotonic() - t0
     assert elapsed < 0.2, f"first call should be immediate, got {elapsed:.2f}s"
@@ -39,11 +39,11 @@ def test_first_call_does_not_wait():
 
 def test_subsequent_calls_respect_min_interval():
     """Calls 2 and 3 must be spaced at least min_interval apart."""
-    _, min_interval = rate_limiter._LIMITS["gemini"]
+    _, min_interval = rate_limiter._LIMITS["NVIDIA"]
     timestamps: list[float] = []
     t0 = time.monotonic()
     for _ in range(3):
-        with rate_limiter.throttle("gemini"):
+        with rate_limiter.throttle("NVIDIA"):
             timestamps.append(time.monotonic() - t0)
     assert timestamps[0] < 0.2
     # Allow a tiny scheduling jitter (50ms) below the configured interval.
@@ -64,17 +64,17 @@ def test_unknown_provider_is_noop():
     assert elapsed < 0.2, f"unknown provider should be no-op, took {elapsed:.2f}s"
 
 
-def test_groq_uses_its_own_interval_independently_of_gemini():
-    """The two providers' clocks must not share state — a Gemini call
-    should not delay a Groq call or vice versa."""
-    with rate_limiter.throttle("gemini"):
+def test_NVIDIA_uses_its_own_interval_independently_of_NVIDIA():
+    """The two providers' clocks must not share state — a NVIDIA call
+    should not delay a NVIDIA call or vice versa."""
+    with rate_limiter.throttle("NVIDIA"):
         pass
     t0 = time.monotonic()
-    with rate_limiter.throttle("groq"):
+    with rate_limiter.throttle("NVIDIA"):
         pass
     elapsed = time.monotonic() - t0
     assert elapsed < 0.2, (
-        f"Groq call after a Gemini call should be immediate, got {elapsed:.2f}s "
+        f"NVIDIA call after a NVIDIA call should be immediate, got {elapsed:.2f}s "
         "— provider state is leaking"
     )
 
@@ -83,13 +83,13 @@ def test_concurrent_callers_serialize_through_min_interval():
     """Two threads firing simultaneously must each see the spacing — the
     Semaphore lets both into the gate but the lock+sleep enforces order.
     This is the test that pins the burst-429 fix."""
-    _, min_interval = rate_limiter._LIMITS["groq"]
+    _, min_interval = rate_limiter._LIMITS["NVIDIA"]
     completion_times: list[float] = []
     lock = threading.Lock()
     t0 = time.monotonic()
 
     def fire():
-        with rate_limiter.throttle("groq"):
+        with rate_limiter.throttle("NVIDIA"):
             with lock:
                 completion_times.append(time.monotonic() - t0)
 

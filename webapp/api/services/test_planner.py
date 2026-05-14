@@ -1,6 +1,6 @@
 """Test plan generator — turns a feature description + screen graph into a UAT plan.
 
-Reuses utils.claude_client.ask (text-only) since the screen metadata is already
+Reuses utils.nvidia_client.ask (text-only) since the screen metadata is already
 in the database (no need to send images again).
 
 Output: list of test cases, each with title, target_screen_id, navigation_path,
@@ -12,7 +12,7 @@ import json
 import logging
 import re
 
-from utils.claude_client import DEFAULT_MODEL, ask
+from utils.nvidia_client import DEFAULT_MODEL, ask
 
 logger = logging.getLogger(__name__)
 

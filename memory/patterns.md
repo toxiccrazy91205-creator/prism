@@ -21,7 +21,7 @@ Write code → run post-task-eval → validate imports/structure/deployment → 
 ```
 
 Type-specific checks:
-- skill_creation: `ls ~/.claude/skills/<name>/SKILL.md` + frontmatter
+- skill_creation: `ls ~/.NVIDIA/skills/<name>/SKILL.md` + frontmatter
 - python_module: `python -c "import <module>"` + signature check at call sites
 - dockerfile: CMD invocation style + COPY source existence + image size estimate
 - deployment: status = SUCCESS + logs show healthy startup
@@ -44,7 +44,7 @@ Something breaks → debug from scratch → fix → move on
 **Correct pattern**:
 ```
 Something breaks →
-grep "<symptom>" /Users/yash/ClaudeWorkspace/MMT-OS/memory/issues_log.jsonl →
+grep "<symptom>" /Users/yash/NVIDIAWorkspace/MMT-OS/memory/issues_log.jsonl →
 apply known fix if found → verify → log result
 ```
 
@@ -181,14 +181,14 @@ When parsing Figma files for UAT:
 - Frames named with `_` prefix or inside "Components/" page = skip
 - Frame names containing: sheet, drawer, bottom, modal, popup = bottom_sheet type
 - Frame text/components containing: "only X left", "X people", "booked", "limited", "offer", "%off" = persuasion type
-- Use Claude batch analysis (all frames in ONE API call) not per-frame calls
+- Use NVIDIA batch analysis (all frames in ONE API call) not per-frame calls
 
 ---
 
 ### P7: Android Deployment Docker Split
 
 Always maintain two Docker images:
-- `Dockerfile.bot` — lightweight (~200MB): Python + telegram-bot + anthropic only. Runs on Railway/any cloud free tier.
+- `Dockerfile.bot` — lightweight (~200MB): Python + telegram-bot + NVIDIA only. Runs on Railway/any cloud free tier.
 - `Dockerfile` — full (~4GB): Python + Android SDK + emulator. Runs on device host with KVM.
 
 Railway free tier cannot run the full image. Keep them separate.

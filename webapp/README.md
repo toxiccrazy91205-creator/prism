@@ -8,24 +8,24 @@ A web app any product manager can use to map an Android/iOS app's screens, infer
 ┌─ Browser (localhost:3000)            Next.js 14 + Tailwind
 │  - Project list
 │  - Bulk screenshot upload (drag-drop multi-file)
-│  - Claude vision analysis per screen
-│  - Flow inference (Claude proposes edges between screens)
+│  - NVIDIA vision analysis per screen
+│  - Flow inference (NVIDIA proposes edges between screens)
 │  - Inline editing of screen names/purposes
 │
 └─ FastAPI (localhost:8000)            SQLite + SQLAlchemy
    - /api/projects        Project CRUD
-   - /api/screens/bulk    Multi-file upload + parallel Claude vision
-   - /api/infer-flow      Cross-screen flow inference (Claude reasoning)
+   - /api/screens/bulk    Multi-file upload + parallel NVIDIA vision
+   - /api/infer-flow      Cross-screen flow inference (NVIDIA reasoning)
    - /api/edges           Manual + accepted-from-inference
-   - Reuses existing utils.claude_client.ask_vision/ask
+   - Reuses existing utils.nvidia_client.ask_vision/ask
 ```
 
 ## Key UX decisions
 
 1. **Bulk upload first** — PMs grab a bunch of screenshots from their phone (or download them) and dump them all at once. Order doesn't matter.
-2. **Claude infers the flow** — after upload, the user clicks "Infer flow" and Claude reasons about which screens connect to which, identifies branches (e.g., "By Night vs By Hour"), and proposes the home screen.
+2. **NVIDIA infers the flow** — after upload, the user clicks "Infer flow" and NVIDIA reasons about which screens connect to which, identifies branches (e.g., "By Night vs By Hour"), and proposes the home screen.
 3. **Review then accept** — proposed edges show with confidence scores and reasoning. The user accepts edges one at a time or in bulk.
-4. **Editable names** — Claude generates initial screen names but the PM can rename anything inline.
+4. **Editable names** — NVIDIA generates initial screen names but the PM can rename anything inline.
 
 ## Run it
 
@@ -60,8 +60,8 @@ UI at http://localhost:3000
 
 ✅ Project CRUD
 ✅ Bulk screenshot upload (drag-drop, multiple files at once)
-✅ Per-screen Claude analysis (name, purpose, interactive elements)
-✅ Flow inference — Claude proposes edges + branches + home screen
+✅ Per-screen NVIDIA analysis (name, purpose, interactive elements)
+✅ Flow inference — NVIDIA proposes edges + branches + home screen
 ✅ Manual edge acceptance/rejection
 ✅ Inline screen renaming
 

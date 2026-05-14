@@ -56,6 +56,7 @@ class ReportArtifacts:
     """What `generate_report` returns."""
     pdf_bytes: bytes | None
     xlsx_bytes: bytes | None
+    html_bytes: bytes | None
     manifest: dict
     content_hash: str
     artifact_id: int  # KnowledgeArtifact row id
@@ -108,9 +109,9 @@ def generate_report(
 ) -> ReportArtifacts:
     """Generate the report. Returns ReportArtifacts (binaries + manifest).
 
-    `formats` defaults to both pdf+xlsx. Passing only one (e.g. ["xlsx"])
+    `formats` defaults to pdf+xlsx. Passing only one (e.g. ["xlsx"])
     skips the other binary's rendering — useful when the user re-downloads
-    a single format.
+    a single format. Supports ["pdf", "xlsx", "html"].
     """
     formats = formats or ["pdf", "xlsx"]
     _set_progress(job, "Building snapshot…")
@@ -182,6 +183,12 @@ def generate_report(
         _set_progress(job, "Rendering Excel…")
         xlsx_bytes = generate_xlsx(snapshot)
 
+    # HTML
+    html_bytes = None
+    if "html" in formats:
+        _set_progress(job, "Rendering HTML…")
+        html_bytes = _render_html(snapshot, narrative, charts, recs).encode("utf-8")
+
     # Persist manifest
     manifest = {
         "version": "0.17.0",
@@ -207,6 +214,7 @@ def generate_report(
     return ReportArtifacts(
         pdf_bytes=pdf_bytes,
         xlsx_bytes=xlsx_bytes,
+        html_bytes=html_bytes,
         manifest=manifest,
         content_hash=content_hash,
         artifact_id=artifact_id,
@@ -255,6 +263,8 @@ def render_from_manifest(
         return _render_pdf(snapshot, narrative, charts, recs)
     elif fmt == "xlsx":
         return generate_xlsx(snapshot)
+    elif fmt == "html":
+        return _render_html(snapshot, narrative, charts, recs).encode("utf-8")
     else:
         raise ValueError(f"Unknown format {fmt!r}")
 
@@ -269,18 +279,13 @@ def _to_dict(snapshot: ReportSnapshot) -> dict:
     return asdict(snapshot)
 
 
-def _render_pdf(
+def _render_html(
     snapshot: ReportSnapshot,
     narrative: dict,
     charts: dict,
     recs: list[Recommendation],
-) -> bytes:
-    """Render the Jinja2 template to HTML, then HTML → PDF via WeasyPrint.
-
-    WeasyPrint is imported lazily so module import doesn't fail on machines
-    that don't have libpango (local dev without `brew install pango`).
-    The PDF rendering path runs on Railway via the Dockerfile apt-installs.
-    """
+) -> str:
+    """Render the Jinja2 template to HTML string."""
     from jinja2 import Environment, FileSystemLoader, select_autoescape
 
     env = Environment(
@@ -293,7 +298,7 @@ def _render_pdf(
     css_path = TEMPLATE_DIR / "report.css"
     css = css_path.read_text() if css_path.exists() else ""
 
-    html = template.render(
+    return template.render(
         ctx={
             "snapshot": _snapshot_for_template(snapshot),
             "narrative": narrative,
@@ -305,16 +310,35 @@ def _render_pdf(
         }
     )
 
+
+def _render_pdf(
+    snapshot: ReportSnapshot,
+    narrative: dict,
+    charts: dict,
+    recs: list[Recommendation],
+) -> bytes:
+    """HTML → PDF via WeasyPrint. Fails gracefully if Pango is missing."""
+    html = _render_html(snapshot, narrative, charts, recs)
+
     # Lazy import — works on Railway (apt: libpango), fails-loud locally
     # if pango is missing (with a clear message).
     try:
         from weasyprint import HTML
-    except OSError as exc:
-        raise RuntimeError(
+    except Exception as exc:
+        # Check if we're on Windows to provide better instructions
+        import platform
+        msg = (
             f"WeasyPrint cannot load Pango. Install via "
             f"`apt-get install libpango-1.0-0 libpangoft2-1.0-0` (Linux) "
-            f"or `brew install pango` (macOS). Original error: {exc}"
+            f"or `brew install pango` (macOS)."
         )
+        if platform.system() == "Windows":
+            msg += (
+                " On Windows, download the 'GTK for Windows Runtime' from "
+                "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases "
+                "or use the provided HTML export instead."
+            )
+        raise RuntimeError(f"{msg} Original error: {exc}")
 
     return HTML(string=html, base_url=str(TEMPLATE_DIR)).write_pdf()
 
@@ -359,7 +383,7 @@ def _persist_manifest(
 
     KnowledgeStore signature is (db, agent_type, project_id) — the report
     generator's "agent_type" is the report-system itself. Caught when
-    persistence failed at the end of the first successful Groq-driven run.
+    persistence failed at the end of the first successful NVIDIA-driven run.
     """
     ks = KnowledgeStore(db, "report_generator", project_id)
     title = f"Executive Report — {project_name} — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"

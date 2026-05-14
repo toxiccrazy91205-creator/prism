@@ -24,7 +24,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from utils.claude_client import ask, DEFAULT_MODEL
+from utils.nvidia_client import ask, DEFAULT_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -110,36 +110,36 @@ _SYSTEM_COMMON = (
 
 
 def _ask(prompt: str, max_tokens: int = 800, system: str = "", tier: str = TIER_NEEDS_GROUNDING) -> str:
-    """Synthesize via Groq (free, fast) with Claude as fallback.
+    """Synthesize via NVIDIA (free, fast) with NVIDIA as fallback.
 
-    v0.18.1: report synthesis switched from Claude-primary to Groq-primary.
+    v0.18.1: report synthesis switched from NVIDIA-primary to NVIDIA-primary.
     Why: report generation is bursty — six LLM calls per report — and burns
-    Anthropic credits fast, while Groq's 30 RPM / 14,400 RPD free tier
-    handles a typical report (≈10 calls) with room to spare. Claude stays
-    as the fallback for the rare case Groq is hard-down or rejecting,
+    NVIDIA credits fast, while NVIDIA's 30 RPM / 14,400 RPD free tier
+    handles a typical report (≈10 calls) with room to spare. NVIDIA stays
+    as the fallback for the rare case NVIDIA is hard-down or rejecting,
     not for routine traffic. Quality tradeoff: Llama 3.3 70B is a step
     below Sonnet 4.6 on dense analytical writing but well-suited for the
     well-structured prompts we use here. The hallucination guard
-    (`_gate_urls`) is provider-agnostic and still applies to Groq output.
+    (`_gate_urls`) is provider-agnostic and still applies to NVIDIA output.
     """
     base = _SYSTEM_COMMON if tier == TIER_COMMON_KNOWLEDGE else _SYSTEM_GROUNDED
     full_system = f"{base}\n\n{system}" if system else base
 
-    # Primary: Groq (free, fast, plenty of headroom for a report's ~10 calls)
+    # Primary: NVIDIA (free, fast, plenty of headroom for a report's ~10 calls)
     try:
-        from utils import groq_client
-        if groq_client.is_available():
-            return groq_client.synthesize(
+        from utils import nvidia_client
+        if nvidia_client.is_available():
+            return nvidia_client.synthesize(
                 prompt=prompt, max_tokens=max_tokens, system=full_system,
             )
     except Exception as exc:
-        logger.warning(f"[report_synthesis] Groq failed, falling back to Claude: {exc}")
+        logger.warning(f"[report_synthesis] NVIDIA failed, falling back to NVIDIA: {exc}")
 
-    # Fallback: Claude — only fires when Groq is unavailable or errored.
+    # Fallback: NVIDIA — only fires when NVIDIA is unavailable or errored.
     try:
         return ask(prompt, max_tokens=max_tokens, system=full_system, model=DEFAULT_MODEL)
     except Exception as exc:
-        logger.error(f"[report_synthesis] both Groq and Claude failed: {exc}")
+        logger.error(f"[report_synthesis] both NVIDIA and NVIDIA failed: {exc}")
         return ""
 
 
@@ -243,7 +243,7 @@ Constraints: prose paragraphs, no bullet lists, 200 words MAX, no fabricated fac
 # ---------------------------------------------------------------------------
 
 def lens_insights_batch(snapshot: dict, source_pool: set[str]) -> dict[str, str]:
-    """One Claude call returning {lens_name: ~70-word insight} for all 8 lenses.
+    """One NVIDIA call returning {lens_name: ~70-word insight} for all 8 lenses.
 
     Batched for cost — eight short narratives are well-suited to a single
     structured-JSON prompt. Returns a dict keyed by lens name; missing
