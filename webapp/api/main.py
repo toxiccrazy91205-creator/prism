@@ -164,7 +164,7 @@ def health() -> dict:
 # v0.22.0: Catch-all proxy for the Next.js standalone server.
 # This allows serving the frontend and backend on a single port.
 import httpx
-_client = httpx.AsyncClient(base_url="http://localhost:3000")
+_client = httpx.AsyncClient(base_url="http://127.0.0.1:3000")
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_frontend(request: Request, path: str):
