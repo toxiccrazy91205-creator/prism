@@ -16,9 +16,9 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse
 
 from webapp.api.db import init_db
 from webapp.api.routes import cost, digest, edges, knowledge, plans, prd, product_os, projects, reports, screens, xproj
@@ -161,13 +161,34 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-# v0.22.0: Serve frontend static files. 
-# Mounted LAST so that API routers take precedence.
-_WEB_OUT = _REPO_ROOT / "webapp" / "web" / "out"
-if _WEB_OUT.exists():
-    app.mount("/", StaticFiles(directory=str(_WEB_OUT), html=True), name="frontend")
-else:
-    logging.getLogger(__name__).warning(
-        f"Frontend build not found at {_WEB_OUT}. "
-        "Dashboard will not be served by this process."
+# v0.22.0: Catch-all proxy for the Next.js standalone server.
+# This allows serving the frontend and backend on a single port.
+import httpx
+_client = httpx.AsyncClient(base_url="http://localhost:3000")
+
+@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_frontend(request: Request, path: str):
+    """Proxy all non-API requests to the internal Next.js server."""
+    if path.startswith("api/"):
+        # This shouldn't be reached if routers are included correctly,
+        # but as a safety measure:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404)
+
+    url = httpx.URL(path=path, query=request.url.query.encode("utf-8"))
+    
+    # Forward the request to Next.js
+    req = _client.build_request(
+        method=request.method,
+        url=url,
+        headers=request.headers.raw,
+        content=request.stream(),
+    )
+    res = await _client.send(req, stream=True)
+    
+    return StreamingResponse(
+        res.aiter_raw(),
+        status_code=res.status_code,
+        headers=dict(res.headers),
+        background=httpx.AsyncClient().aclose if res.is_closed else None
     )

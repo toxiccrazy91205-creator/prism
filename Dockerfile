@@ -4,8 +4,7 @@ WORKDIR /app/web
 COPY webapp/web/package*.json ./
 RUN npm install
 COPY webapp/web ./
-# Ensure NEXT_PUBLIC_API_URL is empty or points to the same domain 
-# so that the rewrites work correctly in the build
+# Standard build (no export) - creates .next/standalone
 RUN npm run build
 
 # STAGE 2: Build Backend
@@ -31,11 +30,17 @@ ENV PYTHONUNBUFFERED 1
 ENV PYTHONPATH=/app
 ENV PATH=/root/.local/bin:$PATH
 
+# Install Node.js (required for Next.js standalone)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
 # WeasyPrint dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 libpangoft2-1.0-0 \
     fonts-liberation \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy python dependencies from builder
@@ -44,8 +49,11 @@ COPY --from=builder /root/.local /root/.local
 # Copy the whole repo (backend)
 COPY . .
 
-# Copy built frontend from Stage 1 into the location expected by main.py
-COPY --from=frontend-builder /app/web/out /app/webapp/web/out
+# Copy built frontend from Stage 1
+# Next.js standalone folder includes its own node_modules
+COPY --from=frontend-builder /app/web/.next/standalone /app/webapp/web/standalone
+COPY --from=frontend-builder /app/web/.next/static /app/webapp/web/standalone/webapp/web/.next/static
+COPY --from=frontend-builder /app/web/public /app/webapp/web/standalone/webapp/web/public
 
 # Writable dirs
 RUN mkdir -p memory .tmp/evidence webapp/data/screenshots

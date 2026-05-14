@@ -10,6 +10,14 @@ SERVICE_TYPE="${SERVICE_TYPE:-api}"
 
 echo "[Prism] Starting service: $SERVICE_TYPE on port $PORT"
 
+# Start Next.js standalone in the background (Internal port 3000)
+if [ -f "/app/webapp/web/standalone/server.js" ]; then
+  echo "[Prism] Starting Frontend (standalone) on port 3000..."
+  PORT=3000 node /app/webapp/web/standalone/server.js &
+else
+  echo "[Prism] Frontend build not found, skipping internal proxy setup."
+fi
+
 case "$SERVICE_TYPE" in
   api)
     # Start FastAPI with Uvicorn
